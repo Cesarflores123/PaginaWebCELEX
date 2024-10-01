@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Becas CELEX</title>
+  <link href="./css/styles.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.0.1/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+</head>
+
+<body class="min-h-screen flex flex-col items-center justify-center bg-gray-100">
+
+  <!-- Sección de imágenes -->
+  <div class="flex w-full px-4 py-4">
+    <img class="relative left-50" src="./images/SEP.png" alt="Imagen 1" width="250" height="150">
+    <img class="relative" src="./images/Logo_IPN.png" alt="Imagen 2" width="250" height="150">
+  </div>
+
+  <!-- Sección de texto guinda -->
+  <div class="w-full bg-guinda py-4">
+    <h2 class="text-center text-white text-xl font-bold">
+      Cursos Extracurriculares de Lenguas Extranjeras
+    </h2>
+    <p class="text-center text-white text-xl">E S I M E Culhuacan</p>
+  </div>
+
+  <!-- Botón de Resultados -->
+  <div class="w-full flex justify-end py-4 px-4">
+    <button class=" bg-resultados text-white px-4 py-2 rounded" id="resultados-button">Resultados</button>
+  </div>
+
+  <!-- Sección de descripción y lenguas -->
+  <div class="flex w-full px-4 py-4 items-center">
+    <div class="w-1/2 p-4">
+      <p class="text-justify">
+        La selección de becas para el Centro de Enseñanza de Lenguas Extranjeras (CELEX)
+        se llevará a cabo mediante un proceso de ruletas, en el cual se elegirán de manera
+        leatoria a tres beneficiarios. Este método se ha implementado con el fin de asegurar la
+        imparcialidad y la equidad en la asignación de las becas, otorgando a todos los
+        candidatos una oportunidad igualitaria de ser seleccionados. La aleatoriedad inherente
+        a las ruletas garantiza la transparencia del proceso de selección, al tiempo que elimina
+        cualquier posibilidad de favoritismo, permitiendo así que los beneficiarios sean designados
+        de manera objetiva y justa.
+      </p>
+    </div>
+    <div class="w-1/2 p-4 flex flex-wrap justify-around">
+      <a href="#ingles" class="text-center">
+        <img src="./images/Ingles.gif" width="100" height="100" alt="Inglés">
+        <p>Inglés</p>
+      </a>
+      <a href="#frances" class="text-center">
+        <img src="./images/Frances.gif" width="100" height="100" alt="Francés">
+        <p>Francés</p>
+      </a>
+      <a href="#italiano" class="text-center">
+        <img src="./images/Italiano.gif" width="100" height="100" alt="Italiano">
+        <p>Italiano</p>
+      </a>
+      <a href="#aleman" class="text-center">
+        <img src="./images/Aleman.gif" width="100" height="100" alt="Alemán">
+        <p>Alemán</p>
+      </a>
+    </div>
+  </div>
+
+  <!-- Botones de Intensivo y Sabatino -->
+  <div class="w-full flex justify-center py-4 space-x-4">
+    <button class="bg-curso text-white px-4 py-2 text-lg font-bold rounded-lg" id="intensivo-button">
+      Intensivo
+    </button>
+    <button class="bg-curso text-white px-4 py-2 text-lg font-bold rounded-lg" id="sabatino-button">
+      Sabatino
+    </button>
+  </div>
+
+  <!-- Secciones de lenguas -->
+  <div id="ingles" class="mb-4 w-full px-4 py-4 text-center bg-cover bg-center gb-image-ingles">
+    <h2 class="text-2xl mb-4 bg-letra-ingles">Inglés</h2>
+    <div id="niveles-ingles" class="w-full px-4 py-4 text-center mb-4"></div>
+    <div id="horario-ingles" class="w-full px-4 py-4 text-center mb-4"></div>
+    <div id="estudiantes-ruleta" class="flex w-full py-4 gap-4">
+      <div id="estudiantes-ingles" class="w-1/2 py-4 text-center"></div>
+      <div id="ruleta-ingles" class="relative w-1/2 p-4 flex flex-col items-center text-center">
+        <!-- Spin container -->
+        <div id="spin-container" class="relative w-11/12 h-[400px] bg-white bg-opacity-50 rounded-lg flex flex-col items-center justify-start">
+          <canvas id="canvas-ingles" class="absolute top-0 left-0 w-full h-full bg-slate-600"></canvas>
+          <button id="spin-ingles" class="mt-4 bg-green-500 text-white px-4 py-2 rounded-full">Girar</button>
+        </div>
+        <!-- Ganadores -->
+        <div id="ganadores" class="w-11/12 h-[150px] mt-4 bg-white bg-opacity-50 rounded-lg">
+          <h2 class="text-center font-semibold">GANADORES DE BECAS</h2>
+          <div id="winning-values-ingles" class="flex justify-between px-4 mt-2">
+            <div id="winning-value-0-ingles" class="winning-value w-1/3 h-[80px] bg-ganadores rounded-lg flex items-center justify-center">Valor 1</div>
+            <div id="winning-value-1-ingles" class="winning-value w-1/3 h-[80px] bg-ganadores rounded-lg mx-1 flex items-center justify-center">Valor 2</div>
+            <div id="winning-value-2-ingles" class="winning-value w-1/3 h-[80px] bg-ganadores rounded-lg flex items-center justify-center">Valor 3</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="frances" class="mb-4 w-full px-4 py-4 text-center bg-cover bg-center gb-image-francia">
+    <h2 class="text-2xl mb-4 bg-letra-ingles">Francés</h2>
+    <div id="niveles-frances" class="w-full px-4 py-4 text-center mb-4"></div>
+    <div id="horario-frances" class="w-full px-4 py-4 text-center mb-4"></div>
+    <div id="estudiantes-ruleta" class="flex w-full py-4 gap-4">
+      <div id="estudiantes-frances" class="w-1/2 py-4 text-center "></div>
+      <div id="ruleta-frances" class="relative w-1/2 p-4 flex flex-col items-center text-center">
+        <div id="spin-container" class="relative w-11/12 h-[400px] bg-white bg-opacity-50 rounded-lg flex flex-col items-center justify-start">
+          <canvas id="canvas-frances" width="400" height="400"  class="mt-4"></canvas>
+          <button id="spin-frances" class="mt-4 bg-green-500 text-white px-4 py-2 rounded-full">Girar</button>
+        </div>
+        <div id="ganadores" class="w-11/12 h-[150px] mt-4 bg-white bg-opacity-50 rounded-lg">
+          <h2 class="text-center font-semibold">GANADORES DE BECAS</h2>
+          <div id="winning-values-frances" class="flex justify-between px-4 mt-2">
+            <div id="winning-value-0-frances" class="winning-value w-1/3 h-[80px] bg-ganadores rounded-lg flex items-center justify-center">Valor 1</div>
+            <div id="winning-value-1-frances" class="winning-value w-1/3 h-[80px] bg-ganadores rounded-lg mx-1 flex items-center justify-center">Valor 2</div>
+            <div id="winning-value-2-frances" class="winning-value w-1/3 h-[80px] bg-ganadores rounded-lg flex items-center justify-center">Valor 3</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="aleman" class="mb-4 w-full px-4 py-4 text-center bg-cover bg-center gb-image-alemania">
+    <h2 class="text-2xl mb-4 bg-letra-aleman">Alemán</h2>
+    <div id="niveles-aleman" class="w-full px-4 py-4 text-center mb-4"></div>
+    <div id="horario-aleman" class="w-full px-4 py-4 text-center mb-4"></div>
+    <div id="estudiantes-ruleta" class="flex w-full py-4 gap-4">
+      <div id="estudiantes-aleman" class="w-1/2 py-4 text-center"></div>
+      <div id="ruleta-aleman" class="relative w-1/2 p-4 flex flex-col items-center text-center">
+        <!-- Spin container -->
+        <div id="spin-container" class="relative w-11/12 h-[400px] bg-white bg-opacity-50 rounded-lg flex flex-col items-center justify-start">
+          <canvas id="canvas-aleman" width="400" height="400" class="mt-4"></canvas>
+          <button id="spin-aleman" class="mt-4 bg-green-500 text-white px-4 py-2 rounded-full">Girar</button>
+        </div>
+        <!-- Ganadores -->
+        <div id="ganadores" class="w-11/12 h-[150px] mt-4 bg-white bg-opacity-50 rounded-lg">
+          <h2 class="text-center font-semibold">GANADORES DE BECAS</h2>
+          <div id="winning-values-aleman" class="flex justify-between px-4 mt-2">
+            <div id="winning-value-0-aleman" class="winning-value w-1/3 h-[80px] bg-ganadores rounded-lg flex items-center justify-center">Valor 1</div>
+            <div id="winning-value-1-aleman" class="winning-value w-1/3 h-[80px] bg-ganadores rounded-lg mx-1 flex items-center justify-center">Valor 2</div>
+            <div id="winning-value-2-aleman" class="winning-value w-1/3 h-[80px] bg-ganadores rounded-lg flex items-center justify-center">Valor 3</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="italiano" class="mb-4 w-full px-4 py-4 text-center bg-cover bg-center gb-image-italia">
+    <h2 class="text-2xl mb-4 bg-letra-italiano">Italiano</h2>
+    <div id="niveles-italiano" class="w-full px-4 py-4 text-center mb-4"></div>
+    <div id="horario-italiano" class="w-full px-4 py-4 text-center mb-4"></div>
+    <div id="estudiantes-ruleta" class="flex w-full py-4 gap-4">
+      <div id="estudiantes-italiano" class="w-1/2 py-4 text-center"></div>
+      <div id="ruleta-italiano" class="relative w-1/2 p-4 flex flex-col items-center text-center">
+        <!-- Spin container -->
+        <div id="spin-container" class="relative w-11/12 h-[400px] bg-white bg-opacity-50 rounded-lg flex flex-col items-center justify-start">
+          <canvas id="canvas-italiano" width="400" height="400" class="mt-4"></canvas>
+          <button id="spin-italiano" class="mt-4 bg-green-500 text-white px-4 py-2 rounded-full">Girar</button>
+        </div>
+        <!-- Ganadores -->
+        <div id="ganadores" class="w-11/12 h-[150px] mt-4 bg-white bg-opacity-50 rounded-lg">
+          <h2 class="text-center font-semibold">GANADORES DE BECAS</h2>
+          <div id="winning-values-italiano" class="flex justify-between px-4 mt-2">
+            <div id="winning-value-0-italiano" class="winning-value w-1/3 h-[80px] bg-ganadores rounded-lg flex items-center justify-center">Valor 1</div>
+            <div id="winning-value-1-italiano" class="winning-value w-1/3 h-[80px] bg-ganadores rounded-lg mx-1 flex items-center justify-center">Valor 2</div>
+            <div id="winning-value-2-italiano" class="winning-value w-1/3 h-[80px] bg-ganadores rounded-lg flex items-center justify-center">Valor 3</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+
+  <script src="./js/usuario/alumnos.js"></script>
+
+</body>
+
+</html>

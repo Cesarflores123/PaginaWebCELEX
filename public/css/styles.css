@@ -1,0 +1,105 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*  ------------------ Estilos globales ----------------  */
+body {
+  font-family: "Times New Roman", Times, serif, sans-serif;
+  font-size: 16px;
+  font-style: italic;
+  margin: 0;
+  padding: 0;
+}
+
+.bg-guinda {
+    background-color: #460000;
+  }
+  
+  .text-guinda {
+    color: #460000;
+  }
+  
+  
+  .text-gris {
+    color: #808080;
+  }
+  
+  .bg-gris{
+    background-color: #808080;
+  }
+
+  .bg-letra{
+    background-image: url('../images/Frances.gif');
+    background-size: cover; 
+    background-position: center; 
+    -webkit-background-clip: text; 
+    color: transparent;
+  }
+
+  .gb-image-ingles{
+    background-image: url('../images/bg-ingles.png');
+  }
+  
+  .gb-image-francia{
+    background-image: url('../images/bg-francia.png');
+  }
+
+  .gb-image-alemania{
+    background-image: url('../images/bg-alemania.png');
+  }
+
+  .gb-image-italia{
+    background-image: url('../images/bg-italia.png');
+  }
+
+  #becas-button, #admin-button, #resultados-button, #intensivo-button, #sabatino-button {
+    transition: transform 0.3s; /* Add transition effect */
+  }
+  
+  #becas-button:hover, #admin-button:hover, #resultados-button:hover, #intensivo-button:hover, #sabatino-button:hover{
+    transform: scale(1.1); /* Scale up on hover */
+  }
+  
+  .bg-niveles{
+    background-color: #152d62;
+  }
+
+  .bg-horarios{
+    background-color: #0e7aa3;
+  }
+
+  .bg-resultados{
+    background-color: #15624a;
+  }
+
+  .bg-curso{
+    background-color: #154c62;
+  }
+
+  .bg-negro-tranparencia{
+    background-color: rgba(0, 0, 0, 0.5);
+  }
+  .bg-blanco-tranparencia{
+    background-color: rgba(255,255,255,0.5);
+  }
+
+  .bg-grisl{
+    background-color: #d3d3d3;
+  }
+  
+  .bg-grisrf{
+    background-color: #808080;
+  }
+
+  .bg-ganadores{
+    background: linear-gradient(90deg, #144c2e, #155338, #155940, #15644e, #156e5a, #157764, #168776, #169686);
+  }
+
+  #pin-container{
+    display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+  }
+
+  /*  ------------------ ----------------- ----------------  */

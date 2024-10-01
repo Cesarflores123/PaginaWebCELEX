@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administrador Login</title>
+    <link href="css/styles.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.0.1/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="min-h-screen flex items-center justify-center bg-gray-200">
+        <div class="bg-white p-12 rounded shadow-md w-full max-w-md border border-gray-200">
+            <h1 class="text-4xl font-bold text-guinda mb-8">Administrador</h1>
+            <form>
+                <div class="mb-8">
+                    <label class="block text-lg text-gray-700 mb-4 font-bold">Usuario</label>
+                    <input type="text" class="w-full p-4 pl-10 text-lg font-bold border border-gray-300 rounded" id="username" />
+                </div>
+                <div class="mb-8">
+                    <label class="block text-lg text-gray-700 mb-4 font-bold">Contraseña</label>
+                    <input type="password" class="w-full p-4 pl-10 text-lg font-bold border border-gray-300 rounded" id="password" />
+                </div>
+                <div class="flex justify-center">
+                    <button type="submit" class="w-full md:w-1/2 bg-guinda text-white p-4 text-2xl font-bold rounded" id="submit-button">
+                        Aceptar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="./js/login/script.js"></script>
+</body>
+</html>

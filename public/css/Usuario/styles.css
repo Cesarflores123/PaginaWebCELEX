@@ -1,0 +1,205 @@
+  
+  /* Estilos para dispositivos móviles */
+  @media only screen and (max-width: 600px) {
+    body {
+      font-size: 14px;
+    }
+  
+    #canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+  
+    #title {
+      text-align: center;
+      font-family: "Roboto Slab", serif;
+      font-size: 1.7em;
+      color: #007a27;
+      padding: 5px;
+    }
+  
+    #title span {
+      display: inline-block;
+      animation: bounce 0.6s infinite;
+      animation-delay: calc(0.1s * var(--i));
+    }
+  
+    @keyframes bounce {
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+      50% {
+        transform: translateY(-20px);
+      }
+    }
+  
+    #spin {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background-color: #f00;
+      color: #fff;
+      font-size: 14px;
+      text-align: center;
+      line-height: 50px;
+    }
+  }
+  
+  /* Estilos para dispositivos mayores a 601px */
+  @media only screen and (min-width: 601px) {
+    main {
+      display: flex;
+      justify-content: space-around; /* Alinea las secciones 1 y 2 horizontalmente */
+      align-items: flex-start; /* Alinea verticalmente las secciones al inicio */
+    }
+  
+    /* Sección 1 (rectángulos) */
+    #section-1 {
+      display: flex;
+      flex-direction: column; /* Mantiene los rectángulos uno debajo del otro */
+      gap: 20px;
+      justify-content: center;
+      align-items: center;
+    }
+  
+    #participants-container,
+    #datetime-container {
+      width: 300px;
+      height: auto;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      margin-bottom: 20px;
+    }
+  
+    /* Sección 2 (ruleta y ganadores de becas) */
+    #section-2 {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+  
+    #spin-container {
+      position: relative;
+      width: 400px;
+      height: 400px;
+      margin: 30px 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+  
+    .ion-text-center {
+      margin-top: 20px;
+      text-align: center;
+    }
+  }
+  
+  /* Canvas y contenedor */
+  #canvas {
+    width: 400px; /* Tamaño adecuado del canvas */
+    height: 400px;
+    border: 2px solid #802434; /* Borde para visualizar claramente el canvas */
+    display: block;
+    margin: 0 auto; /* Centrar el canvas */
+  }
+  
+  #spin {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-color: #802434;
+    color: #fff;
+    font-size: 14px;
+    text-align: center;
+    line-height: 50px;
+  }
+  
+  #num-participants,
+  #update-wheel,
+  #date-input,
+  #time-input,
+  #update-datetime {
+    padding: 10px;
+    font-size: 16px;
+    border: none;
+    border-radius: 5px;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+  }
+  
+  #update-wheel,
+  #update-datetime {
+    background: linear-gradient(to right, #802434, #eb8e72);
+    color: #fff;
+    cursor: pointer;
+  }
+  
+  #update-wheel:hover,
+  #update-datetime:hover {
+    background: linear-gradient(to right, #06a497, #009c3f);
+  }
+  
+  .winning-value {
+    display: inline-block;
+    margin: 0 10px;
+    text-align: center;
+    background: linear-gradient(to top, #dad8d8, #8c1414);
+    width: 100px;
+    height: 50px;
+    line-height: 50px;
+    border-radius: 10px;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+    transition: all 0.5s ease;
+    color: black;
+  }
+  
+  .winning-value.winner {
+    animation: zoom 0.5s;
+  }
+  
+  @keyframes zoom {
+    from {
+      transform: scale(1);
+    }
+    to {
+      transform: scale(1.2);
+    }
+  }
+  
+  .winning-value:hover {
+    box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.7);
+    transform: scale(1.2);
+  }
+  
+  #participants-container,
+  #datetime-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    padding: 20px;
+    background-color: #f5f5f5;
+    border-radius: 10px;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+    flex-direction: column;
+    margin-top: 20px;
+  }
+  
+
+
+  
+  
