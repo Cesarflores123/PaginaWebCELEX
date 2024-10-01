@@ -76,7 +76,7 @@ function limpiarSecciones() {
       <div id="ruleta-${idioma}" class="w-1/2 p-4 flex flex-col items-center text-center">
         <div id="spin-container" class="w-full bg-white bg-opacity-50 rounded-lg flex flex-col items-center justify-start p-5">
           <canvas id="canvas-${idioma}" class="w-1/2 h-auto max-w-[400px] bg-slate-600"></canvas>
-          <button id="spin-${idioma}" class="mt-1 bg-green-500 text-white px-2 py-1 rounded-full">Girar</button>
+          <button id="spin-${idioma}" class="mt-1 bg-blue-300 text-white px-2 py-1 rounded-full">Girar</button>
         </div>
         <div id="ganadores" class="w-11/12 h-[150px] mt-4 bg-white bg-opacity-50 rounded-lg">
           <h2 class="text-center font-semibold">GANADORES DE BECAS</h2>

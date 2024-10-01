@@ -4,7 +4,7 @@ import { Server as WebSocketServer } from 'socket.io';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { initializeWebSocket } from './sockets.js'; // Importamos la lógica de WebSocket
-import { initializeWebSocketAlumnos } from './socketAlumno.js'; // Importamos la lógica de WebSocket
+import { initializeWebSocketAlumnos } from './socketAlumno.js';
 import util from 'util'; // Para utilizar util.promisify con consultas MySQL
 import { connection } from './config/db.mjs'; // Conexión a la base de datos
 
