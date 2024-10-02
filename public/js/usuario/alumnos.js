@@ -53,12 +53,32 @@ socket.on('alumnosData', (data) => {
   });
 });
 
-// ** Nuevo evento para recibir la fecha y hora de la ruleta desde el servidor **
+
 socket.on('mostrarFechaHora', (data) => {
-  const fechaCompleta = data.fechaHora; // Supongamos que el formato es "YYYY-MM-DD HH:MM:SS"
-  const [fecha, hora] = fechaCompleta.split(' '); // Divide la cadena por el espacio en blanco
+  const fechaCompleta = data.fechaHora; // Formato "YYYY-MM-DDTHH:MM"
+  
+  // Dividimos la cadena usando 'T' como delimitador
+  const [fecha, hora] = fechaCompleta.split('T'); 
+
+  // Guardar en localStorage
+  localStorage.setItem('fecha', fecha);
+  localStorage.setItem('hora', hora);
+
+  // Imprimir en consola
   console.log('Fecha:', fecha); // Mostrará solo la fecha
   console.log('Hora:', hora); // Mostrará solo la hora
+});
+// Al cargar la página, verificar si ya hay una fecha y hora almacenada
+document.addEventListener('DOMContentLoaded', () => {
+  const fechaGuardada = localStorage.getItem('fecha');
+  const horaGuardada = localStorage.getItem('hora');
+
+  if (fechaGuardada && horaGuardada) {
+    console.log('Fecha guardada:', fechaGuardada);
+    console.log('Hora guardada:', horaGuardada);
+  } else {
+    console.log('No se ha recibido ninguna fecha y hora del servidor aún.');
+  }
 });
 
 // Función para limpiar y restablecer las secciones antes de mostrar nuevos datos
