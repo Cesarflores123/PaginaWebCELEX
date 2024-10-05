@@ -94,12 +94,17 @@ body {
   .bg-ganadores{
     background: linear-gradient(90deg, #144c2e, #155338, #155940, #15644e, #156e5a, #157764, #168776, #169686);
   }
-
-  #pin-container{
+  #spin-container {
+    width: 100%;
+    height: 100%;
     display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  canvas {
+    max-width: 100%;
+    height: auto;
   }
 
   /*  ------------------ ----------------- ----------------  */

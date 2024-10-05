@@ -1,4 +1,3 @@
-// Conectamos con el servidor WebSocket
 const socket = io();
 
 let spinsLeft = 3; // Queremos que gire tres veces
@@ -33,17 +32,14 @@ socket.on('alumnosData', (data) => {
   alumnos.forEach(alumno => {
     const { idioma, boleta, nombre, apellido_paterno, nivel, horario, promedio } = alumno;
 
-    // Creamos un objeto para almacenar los niveles por idioma
     if (!nivelesPorIdioma[idioma]) {
       nivelesPorIdioma[idioma] = {};
     }
 
-    // Si el nivel no existe en el idioma, lo agregamos
     if (!nivelesPorIdioma[idioma][nivel]) {
       nivelesPorIdioma[idioma][nivel] = [];
     }
 
-    // Agregamos al alumno en su nivel correspondiente
     nivelesPorIdioma[idioma][nivel].push({ boleta, nombre, apellido_paterno, nivel, horario, promedio });
   });
 
@@ -53,22 +49,17 @@ socket.on('alumnosData', (data) => {
   });
 });
 
-
+// Mostrar fecha y hora desde el servidor
 socket.on('mostrarFechaHora', (data) => {
   const fechaCompleta = data.fechaHora; // Formato "YYYY-MM-DDTHH:MM"
-  
-  // Dividimos la cadena usando 'T' como delimitador
   const [fecha, hora] = fechaCompleta.split('T'); 
-
-  // Guardar en localStorage
   localStorage.setItem('fecha', fecha);
   localStorage.setItem('hora', hora);
-
-  // Imprimir en consola
-  console.log('Fecha:', fecha); // Mostrará solo la fecha
-  console.log('Hora:', hora); // Mostrará solo la hora
+  console.log('Fecha:', fecha);
+  console.log('Hora:', hora);
 });
-// Al cargar la página, verificar si ya hay una fecha y hora almacenada
+
+// Verificar si ya hay una fecha y hora almacenada al cargar la página
 document.addEventListener('DOMContentLoaded', () => {
   const fechaGuardada = localStorage.getItem('fecha');
   const horaGuardada = localStorage.getItem('hora');
@@ -83,10 +74,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Función para limpiar y restablecer las secciones antes de mostrar nuevos datos
 function limpiarSecciones() {
-  // Array de idiomas disponibles
   const idiomas = ['ingles', 'frances', 'aleman', 'italiano'];
 
-  // Plantilla HTML básica, con espacios para las secciones dinámicas
   const plantillaHTML = (idioma) => `
     <h1 class="text-2xl mb-4 bg-letra">${idioma.charAt(0).toUpperCase() + idioma.slice(1)}</h1>
     <div id="niveles-${idioma}" class="w-full px-4 py-4 text-center mb-4"></div>
@@ -95,7 +84,7 @@ function limpiarSecciones() {
       <div id="estudiantes-${idioma}" class="w-1/2 py-4 text-center"></div>
       <div id="ruleta-${idioma}" class="w-1/2 p-4 flex flex-col items-center text-center">
         <div id="spin-container" class="w-full bg-white bg-opacity-50 rounded-lg flex flex-col items-center justify-start p-5">
-          <canvas id="canvas-${idioma}" class="w-1/2 h-auto max-w-[400px] bg-slate-600"></canvas>
+          <canvas id="canvas-${idioma}" class="w-1/2 h-auto  bg-slate-600"></canvas>
           <button id="spin-${idioma}" class="mt-1 bg-blue-300 text-white px-2 py-1 rounded-full">Girar</button>
         </div>
         <div id="ganadores" class="w-11/12 h-[150px] mt-4 bg-white bg-opacity-50 rounded-lg">
@@ -109,7 +98,6 @@ function limpiarSecciones() {
       </div>
     </div>`;
 
-  // Reemplaza el contenido de cada sección con la plantilla dinámica
   idiomas.forEach(idioma => {
     document.getElementById(idioma).innerHTML = plantillaHTML(idioma);
   });
@@ -120,22 +108,15 @@ function generarBotonesDeNiveles(idioma, niveles) {
   const sectionId = `niveles-${idioma.toLowerCase()}`;
   const section = document.getElementById(sectionId);
 
-  // Ordenar niveles: Básico 1-5, Intermedio 1-5, Avanzado 1-5
-  const nivelesOrdenados = Object.keys(niveles).sort((a, b) => {
-    const nivelA = obtenerNivel(a);
-    const nivelB = obtenerNivel(b);
-    return nivelA - nivelB;
-  });
+  const nivelesOrdenados = Object.keys(niveles).sort((a, b) => obtenerNivel(a) - obtenerNivel(b));
 
-  // Generar botones en orden
   nivelesOrdenados.forEach(nivel => {
     const boton = document.createElement('button');
     boton.textContent = nivel;
     boton.className = 'bg-niveles text-white px-4 py-2 m-2 rounded';
 
-    // Evento de clic para mostrar los horarios de este nivel
     boton.addEventListener('click', () => {
-      mostrarHorariosPorNivel(idioma, niveles[nivel], section);  // Paso la sección para agregar los horarios debajo
+      mostrarHorariosPorNivel(idioma, niveles[nivel], section);
     });
 
     section.appendChild(boton);
@@ -163,13 +144,11 @@ function mostrarHorariosPorNivel(idioma, alumnos, section) {
   const horariosSection = document.createElement('div');
   horariosSection.id = horariosSectionId;
 
-  // Limpiar las secciones de horarios antes de agregar nuevos datos
   const prevHorarios = document.getElementById(horariosSectionId);
   if (prevHorarios) {
     prevHorarios.remove();
   }
 
-  // Agrupar alumnos por horario
   const horarios = {};
   alumnos.forEach(alumno => {
     if (!horarios[alumno.horario]) {
@@ -178,13 +157,11 @@ function mostrarHorariosPorNivel(idioma, alumnos, section) {
     horarios[alumno.horario].push(alumno);
   });
 
-  // Crear botones de horarios debajo de los botones de nivel
   Object.keys(horarios).forEach(horario => {
     const botonHorario = document.createElement('button');
     botonHorario.textContent = horario;
     botonHorario.className = 'bg-horarios text-white px-4 py-2 m-2 rounded';
 
-    // Evento de clic para mostrar los alumnos de ese horario
     botonHorario.addEventListener('click', () => {
       mostrarAlumnosPorHorario(`estudiantes-${idioma.toLowerCase()}`, horarios[horario]);
     });
@@ -192,22 +169,20 @@ function mostrarHorariosPorNivel(idioma, alumnos, section) {
     horariosSection.appendChild(botonHorario);
   });
 
-  // Insertamos los botones de horarios debajo de los botones de nivel
   section.appendChild(horariosSection);
 }
+
 // Función para mostrar los alumnos por horario en el div correspondiente
 function mostrarAlumnosPorHorario(sectionId, alumnos) {
   const section = document.getElementById(sectionId);
 
-  // Limpiar la sección antes de mostrar nuevos alumnos
   section.innerHTML = '';
 
-  // Crear una tabla para mostrar a los alumnos
   const tablaHtml = `
     <table class="table-auto w-full bg-negro-tranparencia">
       <thead>
         <tr>
-          <th class="px-4 py-2 text-white">#</th> <!-- Columna de enumeración -->
+          <th class="px-4 py-2 text-white">#</th>
           <th class="px-4 py-2 text-white">Boleta</th>
           <th class="px-4 py-2 text-white">Nombre</th>
           <th class="px-4 py-2 text-white">Nivel</th>
@@ -216,9 +191,9 @@ function mostrarAlumnosPorHorario(sectionId, alumnos) {
         </tr>
       </thead>
       <tbody>
-        ${alumnos.map((alumno, index) => ` <!-- Enumeramos con el 'index' -->
+        ${alumnos.map((alumno, index) => `
           <tr>
-            <td class="border px-4 py-2 text-white">${index + 1}</td> <!-- Número del alumno -->
+            <td class="border px-4 py-2 text-white">${index + 1}</td>
             <td class="border px-4 py-2 text-white">${alumno.boleta}</td>
             <td class="border px-4 py-2 text-white">${alumno.nombre} ${alumno.apellido_paterno}</td>
             <td class="border px-4 py-2 text-white">${alumno.nivel}</td>
@@ -232,40 +207,76 @@ function mostrarAlumnosPorHorario(sectionId, alumnos) {
 
   section.innerHTML = tablaHtml;
 
-  // Dibujar la ruleta con los números de los alumnos en lugar de las boletas
-  const numeros = alumnos.map((_, index) => (index + 1).toString()); // Generar números como opciones
-  const idioma = sectionId.split('-')[1]; // Obtener el idioma del sectionId
-  mostrarRuleta(numeros, idioma); // Llamar a la función para mostrar la ruleta con los números
+  const numeros = alumnos.map((_, index) => (index + 1).toString());
+  const idioma = sectionId.split('-')[1];
+  dibujarRuleta(numeros, idioma);
 }
 
-// Función para mostrar la ruleta con números
-function mostrarRuleta(numeros, idioma) {
-  var options = numeros; // Usamos los números de los alumnos como opciones
-  var startAngle = 0;
-  var arc = Math.PI / (options.length / 2);
-  var canvas = document.getElementById(`canvas-${idioma}`);
-  var ctx = canvas.getContext("2d");
+  // Función para mostrar la ruleta con números
+  function dibujarRuleta(numeros, idioma) {
+    ajustarCanvas(idioma); // Ajusta el tamaño del canvas dinámicamente
+    
+    let startAngle = 0;
+    let arc = Math.PI / (numeros.length / 2);
+    let spinTimeout = null;
+    let spinAngleStart = Math.random() * 10 + 10; 
+    let spinTime = 0;
+    let spinTimeTotal = Math.random() * 3 + 4 * 1000;
 
-  // Asegurar que el canvas sea cuadrado
-  canvas.width = Math.min(canvas.parentElement.clientWidth, 300);
-  canvas.height = canvas.width;
+    const canvas = document.getElementById(`canvas-${idioma}`);
+    const ctx = canvas.getContext("2d");
 
-  var outsideRadius = (canvas.width / 2 - 20) * 0.8; // Reducido para dar margen
-  var insideRadius = outsideRadius * 0.6;
-  var textRadius = outsideRadius * 0.85;
-  var centerX = canvas.width / 2;
-  var centerY = canvas.height / 2;
+    function rotateWheel() {
+      spinTime += 30;
+      if (spinTime >= spinTimeTotal) {
+        stopRotateWheel();
+        return;
+      }
+      const spinAngle = spinAngleStart - easeOut(spinTime, 0, spinAngleStart, spinTimeTotal);
+      startAngle += (spinAngle * Math.PI / 180);
+      dibujar(startAngle, arc, numeros, canvas, ctx);
+      spinTimeout = setTimeout(rotateWheel, 30);
+    }
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height); // Limpiar el canvas antes de redibujar
+    function stopRotateWheel() {
+      clearTimeout(spinTimeout);
+      const degrees = startAngle * 180 / Math.PI + 90;
+      const arcd = arc * 180 / Math.PI;
+      const index = Math.floor((360 - degrees % 360) / arcd);
+      ctx.save();
+      ctx.font = 'bold 30px Helvetica, Arial';
+      const text = numeros[index];
+      ctx.fillText(text, canvas.width / 2 - ctx.measureText(text).width / 2, canvas.height / 2 + 10);
+      ctx.restore();
+    }
 
-  // Dibujar la ruleta
-  for (var i = 0; i < options.length; i++) {
-    var angle = startAngle + i * arc;
+    rotateWheel();
+  }
+
+// Función de desaceleración
+function easeOut(t, b, c, d) {
+  const ts = (t /= d) * t;
+  const tc = ts * t;
+  return b + c * (tc + -3 * ts + 3 * t);
+}
+
+// Función para dibujar la ruleta (similar a la implementación original)
+function dibujar(startAngle, arc, options, canvas, ctx) {
+  const outsideRadius = (canvas.width / 2) * 0.9; // Radio externo al 90% del ancho del canvas
+  const insideRadius = outsideRadius * 0.6;
+  const textRadius = outsideRadius * 0.85;
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height); // Limpiar todo el canvas antes de redibujar
+
+  for (let i = 0; i < options.length; i++) {
+    const angle = startAngle + i * arc;
     ctx.fillStyle = i % 2 === 0 ? "#d3d3d3" : "#808080"; // Alternar colores grises
 
     ctx.beginPath();
-    ctx.arc(centerX, centerY, outsideRadius, angle, angle + arc, false);
-    ctx.arc(centerX, centerY, insideRadius, angle + arc, angle, true);
+    ctx.arc(centerX, centerY, outsideRadius, angle, angle + arc, false); // Arco exterior
+    ctx.arc(centerX, centerY, insideRadius, angle + arc, angle, true);  // Arco interior
     ctx.fill();
     ctx.stroke();
     ctx.save();
@@ -276,7 +287,7 @@ function mostrarRuleta(numeros, idioma) {
       centerY + Math.sin(angle + arc / 2) * textRadius
     );
     ctx.rotate(angle + arc / 2 + Math.PI / 2);
-    var text = options[i]; // Mostrar el número del alumno
+    const text = options[i];
     ctx.fillText(text, -ctx.measureText(text).width / 2, 0);
     ctx.restore();
   }
@@ -293,4 +304,29 @@ function mostrarRuleta(numeros, idioma) {
   ctx.fill();
 }
 
+function agregarEventoDeGiro(idioma) {
+  const spinButton = document.getElementById(`spin-${idioma}`);
+  
+  spinButton.addEventListener('click', () => {
+    // Recogemos los números de los alumnos del idioma seleccionado
+    const numeros = options.map((_, index) => (index + 1).toString()); // Usamos los números de los alumnos como opciones
+    iniciarGiroRuleta(numeros, idioma); // Iniciar el giro de la ruleta
+  });
+}
 
+// Agregar el evento de giro a cada idioma (Ejemplo para inglés)
+agregarEventoDeGiro('ingles');
+agregarEventoDeGiro('frances');
+agregarEventoDeGiro('aleman');
+agregarEventoDeGiro('italiano');
+
+
+function ajustarCanvas(idioma) {
+  const canvas = document.getElementById(`canvas-${idioma}`);
+  const container = canvas.parentElement;
+
+  // Asegurar que el canvas tenga el mismo ancho y alto
+  const canvasSize = Math.min(container.clientWidth, container.clientHeight);
+  canvas.width = canvasSize;
+  canvas.height = canvasSize;
+}
