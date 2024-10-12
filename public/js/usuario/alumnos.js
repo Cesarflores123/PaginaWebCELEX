@@ -106,7 +106,7 @@ socket.on('alumnosData', (data) => {
   generarTablasYRuletas(alumnosClasificados, tipoCurso);
 });
 
-function iniciarGirosTodos(fecha, hora) {
+async function iniciarGirosTodos(fecha, hora) {
   const ahora = new Date();
   const fechaHoraObjetivo = new Date(`${fecha}T${hora}`);
 
@@ -117,46 +117,63 @@ function iniciarGirosTodos(fecha, hora) {
     console.log(`Iniciando giros en ${tiempoRestante / 1000} segundos...`);
 
     // Programar el inicio del giro
-    setTimeout(() => {
-      idsCanvas.forEach((canvasId, index) => {
-        const tablaId = idsTablas[index];
+    setTimeout(async () => {
+      const promesasGiros = idsCanvas.map(async (canvasId, index) => {
+        const tablaId = idsTablas[index];  // Obtener el ID de la tabla correspondiente
+        const numeros = obtenerNumerosDeTabla(tablaId);  // Obtener los números de la tabla
 
-        Object.keys(alumnosClasificados).forEach(idioma => {
-          Object.keys(alumnosClasificados[idioma]).forEach(nivel => {
-            Object.keys(alumnosClasificados[idioma][nivel]).forEach(horario => {
-              const alumnos = alumnosClasificados[idioma][nivel][horario];
-              const numeros = alumnos.map((_, idx) => (idx + 1).toString());
-
-              // Iniciar el giro de la ruleta usando el ID del canvas
-              dibujarRuleta(numeros, canvasId, true);
-
-              // Marcar el número ganador en la tabla correspondiente
-              const ganador = numeros[Math.floor(Math.random() * numeros.length)];
-              marcarGanadorEnTabla(tablaId, ganador);
-            });
-          });
-        });
+        // Esperar que cada ruleta termine antes de marcar el resultado
+        await dibujarRuleta(numeros, canvasId, true, tablaId);
       });
+
+      // Esperar que todas las ruletas giren al mismo tiempo
+      await Promise.all(promesasGiros);
+      console.log("Todas las ruletas han terminado de girar.");
     }, tiempoRestante);
   } else {
     console.error('La fecha y hora del giro ya pasaron.');
   }
 }
 
-function marcarGanadorEnTabla(canvasId, ganador) {
-  const tablaId = canvasId.replace('canvas', 'estudiantes').replace('-ruleta', '-tabla');
+// Función para obtener los números de los alumnos de la tabla asociada
+function obtenerNumerosDeTabla(tablaId) {
   const tabla = document.getElementById(tablaId);
+  if (!tabla) {
+    console.error(`No se encontró la tabla con ID: ${tablaId}`);
+    return [];
+  }
+
+  const filas = tabla.getElementsByTagName('tr');
+  const numeros = [];
+
+  // Obtener los números (el índice de las filas) de la tabla
+  for (let i = 1; i < filas.length; i++) { // Saltar el encabezado
+    numeros.push(i.toString());
+  }
+
+  return numeros;
+}
+
+function marcarGanadorEnTabla(tablaId, ganador) {
+  const tabla = document.getElementById(tablaId);
+
+  if (!tabla) {
+    console.error(`No se encontró la tabla con ID: ${tablaId}`);
+    return;
+  }
 
   // Buscar la fila con el número ganador y agregar una clase para resaltarla
   const filas = tabla.getElementsByTagName('tr');
   for (let i = 1; i < filas.length; i++) { // Saltar el encabezado
-    const celdaNumero = filas[i].getElementsByTagName('td')[0];
-    if (celdaNumero.textContent === ganador) {
+    const celdaNumero = filas[i].getElementsByTagName('td')[0]; // Primer columna con el número
+    if (celdaNumero && celdaNumero.textContent === ganador) {
       filas[i].classList.add('bg-green-500', 'text-white');
-      break;
+    } else {
+      filas[i].classList.remove('bg-green-500', 'text-white'); // Limpiar cualquier resaltado anterior
     }
   }
 }
+
 
 function generarTablasYRuletas(alumnosClasificados, tipoCurso) {
   Object.keys(alumnosClasificados).forEach(idioma => {
@@ -260,82 +277,106 @@ function llenarTablaDeAlumnos(sectionId, alumnos) {
   section.innerHTML = tablaHtml;
 }
 
-function dibujarRuleta(numeros, canvasId, shouldSpin = false) {
-  const canvas = document.getElementById(canvasId);
+function dibujarRuleta(numeros, canvasId, shouldSpin = false, tablaId) {
+  return new Promise((resolve) => {
+    const canvas = document.getElementById(canvasId);
+    const ctx = canvas.getContext("2d");
+    const arc = Math.PI / (numeros.length / 2);
+    let spinAngleStart = Math.random() * 10 + 10;
+    let spinTime = 0;
+    let spinTimeTotal = Math.random() * 3 + 4 * 1000;
+    let startAngle = 0;
+    let spinTimeout = null;
 
-  const ctx = canvas.getContext("2d");
-  const arc = Math.PI / (numeros.length / 2);
-  let spinAngleStart = Math.random() * 10 + 10;
-  let spinTime = 0;
-  let spinTimeTotal = Math.random() * 3 + 4 * 1000;
-  let startAngle = 0;
-  let spinTimeout = null;
-  let ganador = null;
+    if (shouldSpin) {
+      rotateWheel(); // Iniciar el giro si está habilitado
+    } else {
+      drawStaticWheel(); // Solo dibujar la ruleta estática si no está habilitado el giro
+    }
 
-  if (shouldSpin) {
-    rotateWheel(); // Iniciar el giro si está habilitado
-  } else {
-    drawStaticWheel(); // Solo dibujar la ruleta estática si no está habilitado el giro
-  }
+    function drawStaticWheel() {
+      const outsideRadius = canvas.width / 2 - 10;
+      const insideRadius = outsideRadius * 0.6;
+      const textRadius = outsideRadius * 0.85;
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
 
-  function drawStaticWheel() {
-    const outsideRadius = canvas.width / 2 - 10;
-    const insideRadius = outsideRadius * 0.6;
-    const textRadius = outsideRadius * 0.85;
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let i = 0; i < numeros.length; i++) {
+        const angle = startAngle + i * arc;
+        ctx.fillStyle = i % 2 === 0 ? "#d3d3d3" : "#808080";
 
-    for (let i = 0; i < numeros.length; i++) {
-      const angle = startAngle + i * arc;
-      ctx.fillStyle = i % 2 === 0 ? "#d3d3d3" : "#808080";
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, outsideRadius, angle, angle + arc, false);
+        ctx.arc(centerX, centerY, insideRadius, angle + arc, angle, true);
+        ctx.fill();
+        ctx.stroke();
 
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, outsideRadius, angle, angle + arc, false);
-      ctx.arc(centerX, centerY, insideRadius, angle + arc, angle, true);
-      ctx.fill();
-      ctx.stroke();
+        ctx.save();
+        ctx.translate(
+          centerX + Math.cos(angle + arc / 2) * textRadius,
+          centerY + Math.sin(angle + arc / 2) * textRadius
+        );
+        ctx.rotate(angle + arc / 2 + Math.PI / 2);
+        ctx.fillStyle = "black";
+        ctx.font = '12px Helvetica';
+        const text = numeros[i];
+        ctx.fillText(text, -ctx.measureText(text).width / 2, 0);
+        ctx.restore();
+      }
 
-      ctx.save();
-      ctx.translate(
-        centerX + Math.cos(angle + arc / 2) * textRadius,
-        centerY + Math.sin(angle + arc / 2) * textRadius
-      );
-      ctx.rotate(angle + arc / 2 + Math.PI / 2);
+      // Dibuja la flecha en la parte superior de la ruleta
+      drawArrow(centerX, centerY, outsideRadius);
+    }
+
+    function rotateWheel() {
+      spinTime += 30;
+      if (spinTime >= spinTimeTotal) {
+        stopRotateWheel();
+        return;
+      }
+      const spinAngle = spinAngleStart - easeOut(spinTime, 0, spinAngleStart, spinTimeTotal);
+      startAngle += (spinAngle * Math.PI / 180);
+      drawStaticWheel();
+      requestAnimationFrame(rotateWheel);
+    }
+
+    function stopRotateWheel() {
+      clearTimeout(spinTimeout);
+      const degrees = startAngle * 180 / Math.PI + 90;
+      const arcd = arc * 180 / Math.PI;
+      const index = Math.floor((360 - degrees % 360) / arcd);
+      const ganador = numeros[index];
+
+      // Marcar la tabla asociada con el número ganador
+      marcarGanadorEnTabla(tablaId, ganador);
+
+      // Resolver la promesa cuando la ruleta haya terminado
+      resolve();
+    }
+
+    function drawArrow(centerX, centerY, outsideRadius) {
       ctx.fillStyle = "black";
-      ctx.font = '12px Helvetica';
-      const text = numeros[i];
-      ctx.fillText(text, -ctx.measureText(text).width / 2, 0);
-      ctx.restore();
+      ctx.beginPath();
+      ctx.moveTo(centerX - 4, centerY - (outsideRadius + 5));
+      ctx.lineTo(centerX + 4, centerY - (outsideRadius + 5));
+      ctx.lineTo(centerX + 4, centerY - (outsideRadius - 5));
+      ctx.lineTo(centerX + 9, centerY - (outsideRadius - 5));
+      ctx.lineTo(centerX + 0, centerY - (outsideRadius - 13));
+      ctx.lineTo(centerX - 9, centerY - (outsideRadius - 5));
+      ctx.lineTo(centerX - 4, centerY - (outsideRadius - 5));
+      ctx.lineTo(centerX - 4, centerY - (outsideRadius + 5));
+      ctx.fill();
     }
-  }
 
-  function rotateWheel() {
-    spinTime += 30;
-    if (spinTime >= spinTimeTotal) {
-      stopRotateWheel();
-      return;
+    function easeOut(t, b, c, d) {
+      const ts = (t /= d) * t;
+      const tc = ts * t;
+      return b + c * (tc + -3 * ts + 3 * t);
     }
-    const spinAngle = spinAngleStart - easeOut(spinTime, 0, spinAngleStart, spinTimeTotal);
-    startAngle += (spinAngle * Math.PI / 180);
-    drawStaticWheel();
-    spinTimeout = setTimeout(rotateWheel, 30);
-  }
-
-  function stopRotateWheel() {
-    clearTimeout(spinTimeout);
-    const degrees = startAngle * 180 / Math.PI + 90;
-    const arcd = arc * 180 / Math.PI;
-    const index = Math.floor((360 - degrees % 360) / arcd);
-    ganador = numeros[index];
-
-    marcarGanadorEnTabla(canvasId, ganador);
-  }
-
-  function easeOut(t, b, c, d) {
-    const ts = (t /= d) * t;
-    const tc = ts * t;
-    return b + c * (tc + -3 * ts + 3 * t);
-  }
+  });
 }
+
+
+
