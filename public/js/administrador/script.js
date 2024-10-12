@@ -1,6 +1,11 @@
 // Inicializamos la conexión WebSocket
 const socket = io();
 
+// Capturar el botón y el campo de fecha y hora
+const btnProgramar = document.getElementById('btnProgramar');
+const fechaHoraInput = document.getElementById('fechaHora');
+const tipoCursoRadios = document.querySelectorAll('input[name="tipoCurso"]');
+
 // Función para manejar el procesamiento de archivos de Excel
 function handleFileUpload(buttonId, fileInputId) {
   const button = document.getElementById(buttonId);
@@ -72,21 +77,32 @@ function normalizeString(str) {
   return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
 }
 
-// --- NUEVA SECCIÓN: Envío de la fecha y hora al servidor ---
 
-// Capturar el botón y el campo de fecha y hora
-const btnProgramar = document.getElementById('btnProgramar');
-const fechaHoraInput = document.getElementById('fechaHora');
-
-// Enviar fecha y hora al servidor cuando se presione el botón "Programar Ruleta"
+// Enviar fecha, hora y tipo de curso al servidor cuando se presione el botón "Programar Ruleta"
 btnProgramar.addEventListener('click', () => {
   const fechaHora = fechaHoraInput.value;
+  
+  let tipoCursoSeleccionado = null;
+  tipoCursoRadios.forEach(radio => {
+    if (radio.checked) {
+      tipoCursoSeleccionado = radio.value.toUpperCase();  // Asegúrate de que sea en mayúsculas
+    }
+  });
 
-  if (fechaHora) {
-    // Emitir un evento con la fecha y hora al servidor
-    socket.emit('programarRuleta', { fechaHora });
-    console.log('Fecha y hora programadas enviadas:', fechaHora);
-  } else {
+  // Verificar el valor de tipoCurso antes de enviarlo
+  console.log('Fecha y hora:', fechaHora, 'Tipo de curso seleccionado:', tipoCursoSeleccionado);
+
+  if (!fechaHora) {
     alert('Por favor selecciona una fecha y hora antes de programar.');
+    return;
   }
+
+  if (!tipoCursoSeleccionado) {
+    alert('Por favor selecciona un tipo de curso.');
+    return;
+  }
+
+  // Emitir un evento con la fecha, hora y tipo de curso al servidor
+  socket.emit('programarRuleta', { fechaHora, tipoCurso: tipoCursoSeleccionado });
 });
+

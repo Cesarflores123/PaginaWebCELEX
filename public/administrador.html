@@ -28,6 +28,25 @@
     <h2 class="text-2xl font-bold">Administrador</h2>
   </div>
 
+  <!-- Selección del Tipo de Curso -->
+  <div id="tipoCurso" class="w-full text-center p-4 mb-8">
+    <h2 class="text-xl font-semibold mb-4">Selecciona el tipo de curso</h2>
+    
+    <div class="flex justify-center space-x-8">
+      <!-- Opción Intensivo -->
+      <div>
+        <input type="radio" id="intensivo" name="tipoCurso" value="INTENSIVO" class="mr-2 text-green-600 focus:ring-green-500">
+        <label for="intensivo" class="text-lg font-medium text-green-600">Intensivo</label>
+      </div>
+
+      <!-- Opción Sabatino -->
+      <div>
+        <input type="radio" id="sabatino" name="tipoCurso" value="SABATINO" class="mr-2 text-green-600 focus:ring-green-500">
+        <label for="sabatino" class="text-lg font-medium text-green-600">Sabatino</label>
+      </div>
+    </div>
+  </div>
+
   <!-- Sección Central con Fondo y Subida de Archivos -->
   <div class="relative w-full p-4 flex justify-center items-center">
     <!-- Contenido -->

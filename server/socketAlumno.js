@@ -4,38 +4,52 @@ import util from 'util'; // Utilizamos util para promisificar las consultas
 export function initializeWebSocketAlumnos(io) {
   const query = util.promisify(connection.query).bind(connection);
 
+  // Manejar las conexiones con los clientes
   io.on('connection', (socket) => {
     console.log('Nuevo cliente conectado vía WebSocket');
     
     // Manejo del evento 'getAlumnos' para obtener los alumnos
     socket.on('getAlumnos', async (data) => {
       const { tipoCurso } = data;
-      try {
-        // Obtener el último ciclo
-        const ultimoCiclo = await obtenerUltimoCiclo(query);
+      console.log("Tipo de curso recibido del cliente en el servidor:", tipoCurso); // Aquí debería imprimirse 'I' o 'S'
+    
+      if (!tipoCurso) {
+        console.error("Error: tipoCurso no recibido del cliente.");
+        return;
+      }
 
-        // Obtener el curso más alto (ya sea Intensivo o Sabatino)
+      try {
+        const ultimoCiclo = await obtenerUltimoCiclo(query);
         const ultimoCurso = await obtenerUltimoCurso(query, ultimoCiclo, tipoCurso);
 
-        // Obtener los alumnos con promedio >= 8.5 del último ciclo y curso
         const alumnos = await obtenerAlumnos(query, ultimoCiclo, ultimoCurso);
 
-        // Enviar los datos de vuelta al cliente
-        socket.emit('alumnosData', { alumnos });
+        // Verificamos que tenemos los alumnos y el tipo de curso antes de enviarlo al cliente
+        console.log("Enviando los datos al cliente con tipoCurso:", tipoCurso);
+        socket.emit('alumnosData', { alumnos, tipoCurso });
       } catch (err) {
         console.error('Error al obtener los alumnos:', err);
         socket.emit('dbConnection', 'Error al obtener los alumnos');
       }
     });
 
-    // Manejo del evento 'programarRuleta' para recibir la fecha y hora programada
     socket.on('programarRuleta', (data) => {
-      const { fechaHora } = data;
-      console.log('Fecha y hora programadas recibidas:', fechaHora);
-
-      // Enviar la fecha y hora a todos los clientes conectados
-      io.emit('mostrarFechaHora', { fechaHora });
+      const { fechaHora, tipoCurso } = data;
+    
+      // Aseguramos que se reciban correctamente los valores
+      console.log('Fecha recibida:', fechaHora); 
+      console.log('Tipo de curso recibido en programarRuleta:', tipoCurso); // Agrega este para verificar si llega bien desde el cliente
+    
+      if (!tipoCurso) {
+        console.error('Error: tipoCurso no recibido en el servidor.');
+        return;
+      }
+    
+      // Emitir la fecha, hora y tipo de curso a todos los clientes conectados
+      io.emit('mostrarFechaHora', { fechaHora, tipoCurso });
     });
+    
+
   });
 }
 
