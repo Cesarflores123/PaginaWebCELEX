@@ -5,10 +5,10 @@ let alumnosClasificados = {};
 // Variable global para almacenar el tipo de curso seleccionado
 let tipoCursoSeleccionado = null;
 
-// Arreglos para almacenar los IDs de tablas y ruletas creadas
 let idsTablas = [];
 let idsRuletas = [];
-let idsCanvas = []; // Aquí almacenaremos los IDs de los canvas
+let idsCanvas = []; 
+let ganadores = [];
 
 document.addEventListener('DOMContentLoaded', () => {
   const fechaGuardada = localStorage.getItem('fecha');
@@ -123,7 +123,7 @@ async function iniciarGirosTodos(fecha, hora) {
         const numeros = obtenerNumerosDeTabla(tablaId);  // Obtener los números de la tabla
 
         // Esperar que cada ruleta termine antes de marcar el resultado
-        await dibujarRuleta(numeros, canvasId, true, tablaId);
+        await dibujarRuleta(numeros, canvasId, true, tablaId, 3);
       });
 
       // Esperar que todas las ruletas giren al mismo tiempo
@@ -167,13 +167,10 @@ function marcarGanadorEnTabla(tablaId, ganador) {
   for (let i = 1; i < filas.length; i++) { // Saltar el encabezado
     const celdaNumero = filas[i].getElementsByTagName('td')[0]; // Primer columna con el número
     if (celdaNumero && celdaNumero.textContent === ganador) {
-      filas[i].classList.add('bg-green-500', 'text-white');
-    } else {
-      filas[i].classList.remove('bg-green-500', 'text-white'); // Limpiar cualquier resaltado anterior
+      filas[i].classList.add('bg-green-500', 'text-white'); // Mantener marcado
     }
   }
 }
-
 
 function generarTablasYRuletas(alumnosClasificados, tipoCurso) {
   Object.keys(alumnosClasificados).forEach(idioma => {
@@ -221,7 +218,7 @@ function generarTablasYRuletas(alumnosClasificados, tipoCurso) {
 
         const numeros = alumnos.map((_, index) => (index + 1).toString());
         ajustarCanvas(canvasId);
-        dibujarRuleta(numeros, canvasId, false); // Cambia a true si quieres que gire inmediatamente al cargar
+        dibujarRuleta(numeros, canvasId, false);
 
         document.getElementById(botonId).addEventListener('click', () => {
           dibujarRuleta(numeros, canvasId, true);
@@ -277,7 +274,7 @@ function llenarTablaDeAlumnos(sectionId, alumnos) {
   section.innerHTML = tablaHtml;
 }
 
-function dibujarRuleta(numeros, canvasId, shouldSpin = false, tablaId) {
+function dibujarRuleta(numeros, canvasId, shouldSpin = false, tablaId, girosRestantes = 3) {
   return new Promise((resolve) => {
     const canvas = document.getElementById(canvasId);
     const ctx = canvas.getContext("2d");
@@ -352,8 +349,20 @@ function dibujarRuleta(numeros, canvasId, shouldSpin = false, tablaId) {
       // Marcar la tabla asociada con el número ganador
       marcarGanadorEnTabla(tablaId, ganador);
 
-      // Resolver la promesa cuando la ruleta haya terminado
-      resolve();
+      // Almacenar el ganador en el arreglo de ganadores
+      guardarGanadorEnArreglo(tablaId, ganador);
+
+      // Eliminar el ganador de la lista para el siguiente giro
+      numeros.splice(index, 1);
+
+      // Si quedan más giros, volver a llamar la función
+      if (girosRestantes > 1 && numeros.length > 0) {
+        setTimeout(() => {
+          dibujarRuleta(numeros, canvasId, true, tablaId, girosRestantes - 1).then(resolve);
+        }, 1000); // Pausa de 1 segundo entre giros
+      } else {
+        resolve(); // Resolver la promesa cuando termine el último giro
+      }
     }
 
     function drawArrow(centerX, centerY, outsideRadius) {
@@ -378,5 +387,31 @@ function dibujarRuleta(numeros, canvasId, shouldSpin = false, tablaId) {
   });
 }
 
+function guardarGanadorEnArreglo(tablaId, ganador) {
+  // Obtener datos del idioma, nivel y horario del ID de la tabla
+  const [idioma, nivel, horario] = tablaId.replace('estudiantes-', '').split('-');
 
+  // Obtener los datos del alumno de la tabla (boleta, nombre, etc.)
+  const tabla = document.getElementById(tablaId);
+  if (tabla) {
+    const filas = tabla.getElementsByTagName('tr');
+    for (let i = 1; i < filas.length; i++) { // Saltar el encabezado
+      const celdaNumero = filas[i].getElementsByTagName('td')[0];
+      if (celdaNumero && celdaNumero.textContent === ganador) {
+        const boleta = filas[i].getElementsByTagName('td')[1].textContent;
+        const nombre = filas[i].getElementsByTagName('td')[2].textContent;
 
+        // Guardar el ganador en el arreglo global
+        ganadores.push({
+          idioma,
+          nivel,
+          horario,
+          boleta,
+          nombre
+        });
+
+        break;
+      }
+    }
+  }
+}
