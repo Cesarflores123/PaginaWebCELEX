@@ -25,7 +25,8 @@ export function initializeWebSocketAlumnos(io) {
         const alumnos = await obtenerAlumnos(query, ultimoCiclo, ultimoCurso);
 
         // Verificamos que tenemos los alumnos y el tipo de curso antes de enviarlo al cliente
-        console.log("Enviando los datos al cliente con tipoCurso:", tipoCurso);
+        console.log("Enviando los datos al cliente con ultimo id_ciclo:", ultimoCiclo);
+        console.log("Enviando los datos al cliente con ultimo curso:", ultimoCurso);
         socket.emit('alumnosData', { alumnos, tipoCurso });
       } catch (err) {
         console.error('Error al obtener los alumnos:', err);
@@ -48,8 +49,28 @@ export function initializeWebSocketAlumnos(io) {
       // Emitir la fecha, hora y tipo de curso a todos los clientes conectados
       io.emit('mostrarFechaHora', { fechaHora, tipoCurso });
     });
-    
 
+    // Capturar el evento 'guardarGanadores' para almacenar los ganadores en la base de datos
+    socket.on('guardarGanadores', async (ganadores) => {
+      console.log('Ganadores recibidos:', ganadores);
+
+      /*try {
+        // Suponiendo que ya tienes una conexión a la base de datos
+        for (const ganador of ganadores) {
+          const { idioma, nivel, horario, boleta, nombre } = ganador;
+
+          // Inserta el ganador en la base de datos
+          await query(`
+            INSERT INTO ganadores (idioma, nivel, horario, boleta, nombre)
+            VALUES (?, ?, ?, ?, ?)
+          `, [idioma, nivel, horario, boleta, nombre]);
+        }
+
+        console.log('Ganadores guardados en la base de datos');
+      } catch (err) {
+        console.error('Error al guardar los ganadores:', err);
+      }*/
+    });
   });
 }
 

@@ -135,8 +135,7 @@ async function iniciarGirosTodos(fecha, hora) {
       await Promise.all(promesasGiros);
       console.log("Todas las ruletas han terminado de girar.");
 
-      // Imprimir el arreglo de ganadores en consola
-      console.log("Ganadores:", ganadores);
+      enviarGanadoresAlServidor();
 
     }, tiempoRestante);
   } else {
@@ -441,4 +440,8 @@ function guardarGanadorEnArreglo(tablaId, ganador) {
       }
     }
   }
+}
+
+function enviarGanadoresAlServidor() {
+  socket.emit('guardarGanadores', ganadores); // Emitir el arreglo de ganadores al servidor
 }
