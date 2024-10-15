@@ -37,7 +37,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// Escuchar el evento 'mostrarFechaHora' que contiene la fecha, hora y tipo de curso
 socket.on('mostrarFechaHora', (data) => {
   const { fechaHora, tipoCurso } = data;
 
@@ -122,6 +121,12 @@ async function iniciarGirosTodos(fecha, hora) {
         const tablaId = idsTablas[index];  // Obtener el ID de la tabla correspondiente
         const numeros = obtenerNumerosDeTabla(tablaId);  // Obtener los números de la tabla
 
+        // Verificar si la tabla tiene 3 o menos estudiantes
+        if (numeros.length <= 3) {
+          console.log(`No se necesita giro para la tabla ${tablaId} con solo ${numeros.length} estudiantes.`);
+          return; // No giramos la ruleta si hay 3 o menos estudiantes
+        }
+
         // Esperar que cada ruleta termine antes de marcar el resultado
         await dibujarRuleta(numeros, canvasId, true, tablaId, 3);
       });
@@ -129,13 +134,16 @@ async function iniciarGirosTodos(fecha, hora) {
       // Esperar que todas las ruletas giren al mismo tiempo
       await Promise.all(promesasGiros);
       console.log("Todas las ruletas han terminado de girar.");
+
+      // Imprimir el arreglo de ganadores en consola
+      console.log("Ganadores:", ganadores);
+
     }, tiempoRestante);
   } else {
     console.error('La fecha y hora del giro ya pasaron.');
   }
 }
 
-// Función para obtener los números de los alumnos de la tabla asociada
 function obtenerNumerosDeTabla(tablaId) {
   const tabla = document.getElementById(tablaId);
   if (!tabla) {
@@ -212,17 +220,31 @@ function generarTablasYRuletas(alumnosClasificados, tipoCurso) {
 
         idsTablas.push(estudiantesId);
         idsRuletas.push(ruletaId);
-        idsCanvas.push(canvasId); // Guardamos el ID del canvas
+        idsCanvas.push(canvasId);
 
+        // Llenar la tabla con los alumnos
         llenarTablaDeAlumnos(estudiantesId, alumnos);
 
         const numeros = alumnos.map((_, index) => (index + 1).toString());
         ajustarCanvas(canvasId);
-        dibujarRuleta(numeros, canvasId, false);
 
-        document.getElementById(botonId).addEventListener('click', () => {
-          dibujarRuleta(numeros, canvasId, true);
-        });
+        // Dibujar la ruleta siempre, pero no permitir que gire si hay 3 o menos alumnos
+        dibujarRuleta(numeros, canvasId, false); // Dibuja la ruleta siempre
+
+        if (numeros.length <= 3) {
+          alumnos.forEach((alumno, index) => {
+            marcarGanadorEnTabla(estudiantesId, (index + 1).toString()); // Marcar ganador
+            guardarGanadorEnArreglo(estudiantesId, (index + 1).toString()); // Guardar en el arreglo
+          });
+          // Deshabilitar el botón de giro si hay 3 o menos alumnos
+          const botonGirar = document.getElementById(botonId);
+          botonGirar.disabled = true;
+          botonGirar.classList.add('bg-gray-500', 'cursor-not-allowed');
+        } else {
+          document.getElementById(botonId).addEventListener('click', () => {
+            dibujarRuleta(numeros, canvasId, true);
+          });
+        }
       });
     });
   });
@@ -388,8 +410,13 @@ function dibujarRuleta(numeros, canvasId, shouldSpin = false, tablaId, girosRest
 }
 
 function guardarGanadorEnArreglo(tablaId, ganador) {
-  // Obtener datos del idioma, nivel y horario del ID de la tabla
-  const [idioma, nivel, horario] = tablaId.replace('estudiantes-', '').split('-');
+  // Extraer los elementos del ID, eliminando el prefijo 'estudiantes-' y dividiéndolo correctamente
+  const partes = tablaId.replace('estudiantes-', '').split('-');
+
+  // Como el horario contiene un guion, debemos unir las últimas partes para obtener el horario completo, pero eliminando '-tabla'
+  const idioma = partes[0];
+  const nivel = partes[1];
+  const horario = partes.slice(2).join('-').replace('-tabla', ''); // Eliminar el '-tabla' del final
 
   // Obtener los datos del alumno de la tabla (boleta, nombre, etc.)
   const tabla = document.getElementById(tablaId);
