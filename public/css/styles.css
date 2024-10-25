@@ -2,16 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/*  ------------------ Estilos globales ----------------  */
-body {
-  font-family: "Times New Roman", Times, serif, sans-serif;
-  font-size: 16px;
-  font-style: italic;
-  margin: 0;
-  padding: 0;
-}
-
-.bg-guinda {
+  .bg-guinda {
     background-color: #460000;
   }
   
@@ -19,6 +10,9 @@ body {
     color: #460000;
   }
   
+  .bg-guinda-idiomas {
+    background-color: #003e1c;
+  }
   
   .text-gris {
     color: #808080;
@@ -28,28 +22,20 @@ body {
     background-color: #808080;
   }
 
-  .bg-letra{
-    background-image: url('../images/Frances.gif');
-    background-size: cover; 
-    background-position: center; 
-    -webkit-background-clip: text; 
-    color: transparent;
-  }
-
   .gb-image-ingles{
-    background-image: url('../images/bg-ingles.png');
+    background-image: url('../images/inglaterra.png');
   }
   
   .gb-image-francia{
-    background-image: url('../images/bg-francia.png');
+    background-image: url('../images/francia.jpeg');
   }
 
   .gb-image-alemania{
-    background-image: url('../images/bg-alemania.png');
+    background-image: url('../images/alemania.png');
   }
 
   .gb-image-italia{
-    background-image: url('../images/bg-italia.png');
+    background-image: url('../images/italia.png');
   }
 
   #becas-button, #admin-button, #resultados-button, #intensivo-button, #sabatino-button {

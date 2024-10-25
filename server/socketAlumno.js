@@ -3,7 +3,8 @@ import util from 'util'; // Utilizamos util para promisificar las consultas
 
 export function initializeWebSocketAlumnos(io) {
   const query = util.promisify(connection.query).bind(connection);
-
+  // Variable para almacenar el tipo de curso
+  let tipoCursoGlobal = null;
   // Manejar las conexiones con los clientes
   io.on('connection', (socket) => {
     console.log('Nuevo cliente conectado vía WebSocket');
@@ -17,6 +18,8 @@ export function initializeWebSocketAlumnos(io) {
         console.error("Error: tipoCurso no recibido del cliente.");
         return;
       }
+
+      tipoCursoGlobal = tipoCurso;
 
       try {
         const ultimoCiclo = await obtenerUltimoCiclo(query);
@@ -53,24 +56,95 @@ export function initializeWebSocketAlumnos(io) {
     // Capturar el evento 'guardarGanadores' para almacenar los ganadores en la base de datos
     socket.on('guardarGanadores', async (ganadores) => {
       console.log('Ganadores recibidos:', ganadores);
-
-      /*try {
-        // Suponiendo que ya tienes una conexión a la base de datos
-        for (const ganador of ganadores) {
-          const { idioma, nivel, horario, boleta, nombre } = ganador;
-
-          // Inserta el ganador en la base de datos
-          await query(`
-            INSERT INTO ganadores (idioma, nivel, horario, boleta, nombre)
-            VALUES (?, ?, ?, ?, ?)
-          `, [idioma, nivel, horario, boleta, nombre]);
+    
+      try {
+        // Comprobar si tipoCursoGlobal tiene un valor antes de continuar
+        if (!tipoCursoGlobal) {
+          console.error("Error: tipoCurso no definido en el contexto de 'guardarGanadores'.");
+          return;
         }
-
-        console.log('Ganadores guardados en la base de datos');
+    
+        // Obtener el último ciclo y curso
+        const ultimoCiclo = await obtenerUltimoCiclo(query);
+        const ultimoCurso = await obtenerUltimoCurso(query, ultimoCiclo, tipoCursoGlobal);
+    
+        for (const ganador of ganadores) {
+          const { boleta, idioma, nivel, horario } = ganador;
+    
+          // Convertir el idioma a mayúsculas
+          const idiomaMayusculas = idioma.toUpperCase();
+    
+          // Obtener el id_idioma usando el valor del idioma en mayúsculas
+          const idiomaResult = await query(`
+            SELECT id_idioma 
+            FROM Idiomas 
+            WHERE UPPER(idioma) = ?
+          `, [idiomaMayusculas]);
+    
+          if (idiomaResult.length === 0) {
+            console.error(`Error: Idioma ${idioma} no encontrado.`);
+            continue; // Saltar al siguiente ganador si el idioma no existe
+          }
+    
+          const id_idioma = idiomaResult[0].id_idioma;
+    
+          // Buscar la inscripción correspondiente a este ganador con la boleta, id_idioma, ciclo y curso
+          const inscripcion = await query(`
+            SELECT id_idioma, id_nivel, id_horario, id_ciclo, id_curso, boleta 
+            FROM Inscripciones 
+            WHERE boleta = ? AND id_idioma = ? AND id_ciclo = ? AND id_curso = ?
+          `, [boleta, id_idioma, ultimoCiclo, ultimoCurso]);
+    
+          if (inscripcion.length > 0) {
+            // Obtener el último id_ganador
+            const result = await query(`SELECT MAX(id_ganador) as ultimoGanador FROM Ganadores`);
+            const nuevoIdGanador = (result[0].ultimoGanador || 0) + 1;
+    
+            // Insertar en la tabla Ganadores
+            await query(`
+              INSERT INTO Ganadores (id_ganador, id_idioma, id_nivel, id_horario, id_ciclo, id_curso, boleta)
+              VALUES (?, ?, ?, ?, ?, ?, ?)
+            `, [nuevoIdGanador, inscripcion[0].id_idioma, inscripcion[0].id_nivel, inscripcion[0].id_horario, inscripcion[0].id_ciclo, inscripcion[0].id_curso, boleta]);
+    
+            console.log(`Ganador guardado: ${boleta}, Idioma: ${idioma}, Nivel: ${inscripcion[0].id_nivel}`);
+          } else {
+            console.log(`La boleta ${boleta} no está inscrita en el idioma, ciclo o curso actual.`);
+          }
+        }
+    
+        console.log('Todos los ganadores han sido procesados.');
       } catch (err) {
         console.error('Error al guardar los ganadores:', err);
-      }*/
+      }
+    });    
+
+    // Evento para obtener los últimos ganadores
+    socket.on('obtenerUltimosGanadores', async () => {
+      try {
+        // Obtener el último ciclo y curso para el tipo de curso global
+        const ultimoCiclo = await obtenerUltimoCiclo(query);
+        const ultimoCurso = await obtenerUltimoCurso(query, ultimoCiclo, tipoCursoGlobal);
+
+        // Consulta para obtener los últimos ganadores
+        const ganadores = await query(`
+          SELECT g.boleta, e.nombre, e.apellido_paterno, i.idioma, n.nivel, h.horario 
+          FROM Ganadores g
+          JOIN Estudiantes e ON e.boleta = g.boleta
+          JOIN Idiomas i ON i.id_idioma = g.id_idioma
+          JOIN Niveles n ON n.id_nivel = g.id_nivel
+          JOIN Horarios h ON h.id_horario = g.id_horario
+          WHERE g.id_ciclo = ? AND g.id_curso = ?
+        `, [ultimoCiclo, ultimoCurso]);
+
+        // Emitir los datos de los ganadores al cliente
+        socket.emit('ultimosGanadores', ganadores);
+      } catch (err) {
+        console.error('Error al obtener los últimos ganadores:', err);
+        socket.emit('dbConnection', 'Error al obtener los ganadores');
+      }
     });
+
+    
   });
 }
 

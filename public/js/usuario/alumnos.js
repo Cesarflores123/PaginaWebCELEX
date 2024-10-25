@@ -10,15 +10,187 @@ let idsRuletas = [];
 let idsCanvas = []; 
 let ganadores = [];
 
+document.getElementById('resultados-button').addEventListener('click', async () => {
+  try {
+    // Emitir evento para obtener los últimos ganadores
+    socket.emit('obtenerUltimosGanadores');
+
+    // Escuchar los datos de los ganadores desde el servidor
+    socket.on('ultimosGanadores', (ganadores) => {
+      if (ganadores.length > 0) {
+        // Crear la tabla de ganadores en HTML con un campo de búsqueda
+        let tablaGanadores = `
+          <div class="mb-4">
+            <input type="text" id="buscarBoleta" placeholder="Buscar por boleta..." class="w-full px-4 py-2 border border-gray-300 rounded mb-4" />
+          </div>
+          <div class="overflow-x-auto"> <!-- Habilitar scroll horizontal en dispositivos pequeños -->
+            <table id="tablaGanadores" class="min-w-full table-auto w-full bg-white rounded-lg shadow-lg">
+              <thead>
+                <tr class="bg-guinda text-white uppercase text-xs sm:text-sm">
+                  <th class="px-8 py-2 min-w-[200px] whitespace-nowrap">Boleta</th> <!-- Ancho más amplio -->
+                  <th class="px-8 py-2 min-w-[220px] whitespace-nowrap">Nombre</th> <!-- Ancho más amplio -->
+                  <th class="px-8 py-2 min-w-[160px] whitespace-nowrap">Idioma</th>
+                  <th class="px-8 py-2 min-w-[160px] whitespace-nowrap">Nivel</th>
+                  <th class="px-8 py-2 min-w-[180px] whitespace-nowrap">Horario</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
+
+        ganadores.forEach((ganador) => {
+          tablaGanadores += `
+            <tr class="text-xs sm:text-sm md:text-base">
+              <td class="border px-4 py-2 whitespace-nowrap">${ganador.boleta}</td>
+              <td class="border px-4 py-2 whitespace-nowrap">${ganador.nombre} ${ganador.apellido_paterno}</td>
+              <td class="border px-4 py-2 whitespace-nowrap">${ganador.idioma}</td>
+              <td class="border px-4 py-2 whitespace-nowrap">${ganador.nivel}</td>
+              <td class="border px-4 py-2 whitespace-nowrap">${ganador.horario}</td>
+            </tr>
+          `;
+        });
+
+        tablaGanadores += `
+            </tbody>
+          </table>
+        </div>
+        `;
+
+        // Mostrar la tabla en un SweetAlert2 modal
+        Swal.fire({
+          title: '🎉 ¡Felicidades a los Ganadores! 🎉',
+          html: tablaGanadores,
+          width: '80%',
+          confirmButtonText: 'Cerrar',
+          confirmButtonColor: '#7b1e26', // Botón de cerrar guinda
+          didOpen: () => {
+            lanzarConfeti(); // Lanzar confeti cuando se abra el modal
+
+            // Buscar boleta en tiempo real
+            const buscarBoletaInput = document.getElementById('buscarBoleta');
+            buscarBoletaInput.addEventListener('input', function () {
+              const filter = buscarBoletaInput.value.toUpperCase();
+              const table = document.getElementById('tablaGanadores');
+              const tr = table.getElementsByTagName('tr');
+
+              // Recorrer todas las filas de la tabla y ocultar las que no coincidan
+              for (let i = 1; i < tr.length; i++) { // Comienza desde 1 para saltar el encabezado
+                const td = tr[i].getElementsByTagName('td')[0]; // Columna de la boleta
+                if (td) {
+                  const txtValue = td.textContent || td.innerText;
+                  if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                    tr[i].style.display = '';
+                  } else {
+                    tr[i].style.display = 'none';
+                  }
+                }
+              }
+            });
+          }
+        });
+      } else {
+        Swal.fire({
+          title: 'No hay ganadores recientes.',
+          confirmButtonText: 'Cerrar',
+          confirmButtonColor: '#7b1e26',
+        });
+      }
+    });
+  } catch (error) {
+    console.error('Error al obtener los ganadores:', error);
+    Swal.fire({
+      title: 'Error al obtener los ganadores.',
+      confirmButtonText: 'Cerrar',
+      confirmButtonColor: '#7b1e26',
+    });
+  }
+});
+
+
+// Función para lanzar confeti
+function lanzarConfeti() {
+  var end = Date.now() + (2 * 1000); // Duración del confeti: 2 segundos
+
+  // Configuración de confeti para disparar constantemente durante 2 segundos
+  (function frame() {
+    confetti({
+      particleCount: 2,
+      angle: 60,
+      spread: 55,
+      origin: { x: 0 },
+      colors: ['#bb0000', '#ffffff']
+    });
+    confetti({
+      particleCount: 2,
+      angle: 120,
+      spread: 55,
+      origin: { x: 1 },
+      colors: ['#bb0000', '#ffffff']
+    });
+
+    if (Date.now() < end) {
+      requestAnimationFrame(frame);
+    }
+  }());
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('JavaScript cargado correctamente.');
+
+  // Obtener datos almacenados en localStorage
   const fechaGuardada = localStorage.getItem('fecha');
   const horaGuardada = localStorage.getItem('hora');
-  console.log('Fecha guardada:', fechaGuardada);
-  console.log('Hora guardada:', horaGuardada);
+  const tipoCursoGuardado = localStorage.getItem('tipoCurso') || 'Intensivo';
+  const tipoCursoGuardadoMinusculas = tipoCursoGuardado.toLowerCase();
+  console.log('Tipo de curso guardado:', tipoCursoGuardadoMinusculas);
 
-  const tipoCursoGuardado = localStorage.getItem('tipoCurso');
+  // Referencias a las secciones
+  const seccionIntensivo = document.getElementById('intensivo');
+  const seccionSabatino = document.getElementById('sabatino');
+  const idiomas = ['ingles', 'frances', 'aleman', 'italiano'];
 
-  if (alumnosClasificados && tipoCursoGuardado) {
+  // Función para ocultar todas las secciones de idiomas
+  const ocultarTodosLosIdiomas = () => {
+    console.log('Ocultando todos los idiomas.');
+    idiomas.forEach(idioma => {
+      document.getElementById(`${idioma}-intensivo`).style.display = 'none';
+      document.getElementById(`${idioma}-sabatino`).style.display = 'none';
+    });
+  };
+
+  // Función para mostrar un idioma específico
+  const mostrarIdioma = (idioma) => {
+    ocultarTodosLosIdiomas();
+    if (tipoCursoGuardadoMinusculas === 'intensivo') {
+      seccionIntensivo.style.display = 'block';
+      document.getElementById(`${idioma}-intensivo`).style.display = 'block';
+      console.log(`Mostrando ${idioma}-intensivo`);
+    } else if (tipoCursoGuardadoMinusculas === 'sabatino') {
+      seccionSabatino.style.display = 'block';
+      document.getElementById(`${idioma}-sabatino`).style.display = 'block';
+      console.log(`Mostrando ${idioma}-sabatino`);
+    }
+  };
+
+  // Mostrar inglés por defecto al cargar la página
+  mostrarIdioma('ingles');
+
+  // Verifica si los elementos se seleccionan y los eventos se agregan correctamente.
+  const enlaces = document.querySelectorAll('a[data-idioma]');
+    console.log('Enlaces de idiomas encontrados:', enlaces);
+
+    enlaces.forEach(link => {
+      console.log('Agregando evento a:', link);
+      link.addEventListener('click', (event) => {
+        event.preventDefault();
+        const idiomaSeleccionado = link.getAttribute('data-idioma');
+        console.log('Idioma seleccionado:', idiomaSeleccionado);
+        mostrarIdioma(idiomaSeleccionado);
+      });
+    });
+
+
+  // Emitir datos de acuerdo al tipo de curso
+  if (typeof alumnosClasificados !== 'undefined' && tipoCursoGuardado) {
     generarTablasYRuletas(alumnosClasificados, tipoCursoGuardado);
     if (fechaGuardada && horaGuardada) {
       iniciarGirosTodos(fechaGuardada, horaGuardada);
@@ -27,15 +199,15 @@ document.addEventListener('DOMContentLoaded', () => {
     console.error('No se encontraron alumnos clasificados o tipo de curso.');
   }
 
-  if (tipoCursoGuardado === 'INTENSIVO') {
-    socket.emit('getAlumnos', { tipoCurso: 'I' });
-  } else if (tipoCursoGuardado === 'SABATINO') {
-    socket.emit('getAlumnos', { tipoCurso: 'S' });
-  } else {
-    socket.emit('getAlumnos', { tipoCurso: 'I' });
-    socket.emit('getAlumnos', { tipoCurso: 'S' });
+  if (typeof socket !== 'undefined') {
+    if (tipoCursoGuardadoMinusculas === 'intensivo') {
+      socket.emit('getAlumnos', { tipoCurso: 'I' });
+    } else if (tipoCursoGuardadoMinusculas === 'sabatino') {
+      socket.emit('getAlumnos', { tipoCurso: 'S' });
+    }
   }
 });
+
 
 socket.on('mostrarFechaHora', (data) => {
   const { fechaHora, tipoCurso } = data;
@@ -205,10 +377,10 @@ function generarTablasYRuletas(alumnosClasificados, tipoCurso) {
         }
 
         const estudiantesRuletaHtml = `
-          <div id="${divId}" class="flex w-full py-4 gap-4">
-            <div id="${estudiantesId}" class="w-1/2 py-4 text-center"></div>
-            <div id="${ruletaId}" class="relative w-1/2 p-4 flex flex-col items-center text-center">
-              <div id="spin-container" class="relative w-1/2 h-[300px] bg-white bg-opacity-50 rounded-lg flex flex-col items-center justify-start">
+          <div id="${divId}" class="flex flex-col md:flex-row w-full py-4 gap-4">
+            <div id="${estudiantesId}" class="w-full md:w-1/2 py-4 text-center"></div>
+            <div id="${ruletaId}" class="relative w-full md:w-1/2 p-4 flex flex-col items-center text-center">
+              <div id="spin-container" class="relative w-full h-[300px] bg-white bg-opacity-50 rounded-lg flex flex-col items-center justify-start">
                 <canvas id="${canvasId}" class="absolute top-0 left-0 w-full h-full bg-slate-600"></canvas>
                 <button id="${botonId}" class="mt-4 bg-green-500 text-white px-4 py-2 rounded-full">Girar</button>
               </div>
@@ -266,9 +438,10 @@ function llenarTablaDeAlumnos(sectionId, alumnos) {
   section.innerHTML = '';
 
   const tablaHtml = `
+    <div class="overflow-x-auto">
     <table class="table-auto w-full bg-negro-tranparencia">
       <thead>
-        <tr>
+        <tr class="bg-guinda text-white uppercase text-xs sm:text-sm">
           <th class="px-4 py-2 text-white">#</th>
           <th class="px-4 py-2 text-white">Boleta</th>
           <th class="px-4 py-2 text-white">Nombre</th>
@@ -290,6 +463,7 @@ function llenarTablaDeAlumnos(sectionId, alumnos) {
         `).join('')}
       </tbody>
     </table>
+  </div>
   `;
 
   section.innerHTML = tablaHtml;

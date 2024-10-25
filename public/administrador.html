@@ -8,31 +8,31 @@
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.0.1/dist/tailwind.min.css" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
-  
 </head>
 <body class="min-h-screen flex flex-col items-center bg-white">
+  
   <!-- Imágenes superiores -->
-  <div class="relative w-full flex justify-between items-center mb-4">
-    <img class="relative left-10" src="images/ipn.svg" alt="Imagen 1" width="90" height="90">
-    <img class="relative right-10" src="images/esime.png" alt="Imagen 2" width="120" height="120">
+  <div class="relative w-full flex justify-between items-center mb-4 px-4 md:px-10">
+    <img class="w-16 h-auto md:w-24" src="images/ipn.svg" alt="Imagen 1">
+    <img class="w-24 h-auto md:w-32" src="images/esime.png" alt="Imagen 2">
   </div>
 
   <!-- Encabezado CELEX -->
-  <div class="w-full bg-guinda text-white text-center p-3 mb-2">
-    <h1 class="text-3xl font-bold">CELEX</h1>
-    <h2 class="text-2xl">Centro de Lenguas Extranjeras</h2>
+  <div class="w-full bg-guinda text-white text-center p-3 mb-4">
+    <h1 class="text-2xl md:text-3xl font-bold">CELEX</h1>
+    <h2 class="text-xl md:text-2xl">Centro de Lenguas Extranjeras</h2>
   </div>
 
   <!-- Administrador -->
   <div class="w-full bg-gris text-guinda text-center p-4 mb-8">
-    <h2 class="text-2xl font-bold">Administrador</h2>
+    <h2 class="text-xl md:text-2xl font-bold">Administrador</h2>
   </div>
 
   <!-- Selección del Tipo de Curso -->
   <div id="tipoCurso" class="w-full text-center p-4 mb-8">
-    <h2 class="text-xl font-semibold mb-4">Selecciona el tipo de curso</h2>
+    <h2 class="text-lg md:text-xl font-semibold mb-4">Selecciona el tipo de curso</h2>
     
-    <div class="flex justify-center space-x-8">
+    <div class="flex flex-col md:flex-row justify-center items-center space-y-4 md:space-y-0 md:space-x-8">
       <!-- Opción Intensivo -->
       <div>
         <input type="radio" id="intensivo" name="tipoCurso" value="INTENSIVO" class="mr-2 text-green-600 focus:ring-green-500">
@@ -50,45 +50,43 @@
   <!-- Sección Central con Fondo y Subida de Archivos -->
   <div class="relative w-full p-4 flex justify-center items-center">
     <!-- Contenido -->
-    <div class="relative w-full max-w-4xl mx-8 z-10 grid grid-cols-2 gap-8">
+    <div class="relative w-full max-w-2xl lg:max-w-4xl mx-auto z-10 grid grid-cols-1 md:grid-cols-2 gap-8">
       <!-- Inglés -->
-      <div class="p-4 rounded-lg border shadow-md">
-        <label class="block text-lg font-semibold mb-2">Inglés:</label>
-        <input type="file" id="file1" class="mb-2">
-        <button id="btnUpload1" class="bg-guinda text-white px-4 py-2 rounded">Selecciona un archivo</button>
+      <div class="p-4 rounded-lg border shadow-md space-y-4">
+        <label class="block text-lg font-semibold">Inglés:</label>
+        <input type="file" id="file1" class="block w-full" accept=".xlsx, .xls">
+        <button id="btnUpload1" class="block w-full bg-guinda text-white px-4 py-2 rounded">Selecciona un archivo</button>
       </div>
 
       <!-- Francés -->
-      <div class="p-4 rounded-lg border shadow-md">
-        <label class="block text-lg font-semibold mb-2">Francés:</label>
-        <input type="file" id="file2" class="mb-2">
-        <button id="btnUpload2" class="bg-guinda text-white px-4 py-2 rounded">Selecciona un archivo</button>
+      <div class="p-4 rounded-lg border shadow-md space-y-4">
+        <label class="block text-lg font-semibold">Francés:</label>
+        <input type="file" id="file2" class="block w-full" accept=".xlsx, .xls">
+        <button id="btnUpload2" class="block w-full bg-guinda text-white px-4 py-2 rounded">Selecciona un archivo</button>
       </div>
 
       <!-- Italiano -->
-      <div class="p-4 rounded-lg border shadow-md">
-        <label class="block text-lg font-semibold mb-2">Italiano:</label>
-        <input type="file" id="file3" class="mb-2">
-        <button id="btnUpload3" class="bg-guinda text-white px-4 py-2 rounded">Selecciona un archivo</button>
+      <div class="p-4 rounded-lg border shadow-md space-y-4">
+        <label class="block text-lg font-semibold">Italiano:</label>
+        <input type="file" id="file3" class="block w-full" accept=".xlsx, .xls">
+        <button id="btnUpload3" class="block w-full bg-guinda text-white px-4 py-2 rounded">Selecciona un archivo</button>
       </div>
 
       <!-- Alemán -->
-      <div class="p-4 rounded-lg border shadow-md">
-        <label class="block text-lg font-semibold mb-2">Alemán:</label>
-        <input type="file" id="file4" class="mb-2">
-        <button id="btnUpload4" class="bg-guinda text-white px-4 py-2 rounded">Selecciona un archivo</button>
+      <div class="p-4 rounded-lg border shadow-md space-y-4">
+        <label class="block text-lg font-semibold">Alemán:</label>
+        <input type="file" id="file4" class="block w-full" accept=".xlsx, .xls">
+        <button id="btnUpload4" class="block w-full bg-guinda text-white px-4 py-2 rounded">Selecciona un archivo</button>
       </div>
 
       <!-- Programar Fecha y Hora -->
-      <div class="col-span-2 mt-8">
-        <h2 class="text-2xl font-bold mb-4">Programar Fecha y Hora para Ruleta</h2>
-        <input type="datetime-local" id="fechaHora" class="border p-2 mb-4 w-full">
-        <button id="btnProgramar" class="bg-guinda text-white px-4 py-2 rounded">Programar Ruleta</button>
+      <div class="col-span-1 md:col-span-2 mt-8 text-center space-y-4">
+        <h2 class="text-xl md:text-2xl font-bold mb-4">Programar Fecha y Hora para Ruleta</h2>
+        <input type="datetime-local" id="fechaHora" class="block border p-2 mb-4 w-full max-w-md mx-auto">
+        <button id="btnProgramar" class="block w-full bg-guinda text-white px-4 py-2 rounded">Programar Ruleta</button>
       </div>
     </div>
   </div>
-  
-  
 
   <script src="./js/administrador/script.js"></script>
 </body>
