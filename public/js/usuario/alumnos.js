@@ -1,5 +1,6 @@
 const socket = io();
-
+const apiKey = "561a7023-5e35-40df-b6bd-45dfdc149ae8"; // Tu clave de API de Random.org
+const urlRandomOrg = "https://api.random.org/json-rpc/4/invoke";
 let alumnosClasificados = {};
 
 // Variable global para almacenar el tipo de curso seleccionado
@@ -104,8 +105,6 @@ document.getElementById('resultados-button').addEventListener('click', async () 
     });
   }
 });
-
-
 // Función para lanzar confeti
 function lanzarConfeti() {
   var end = Date.now() + (2 * 1000); // Duración del confeti: 2 segundos
@@ -208,7 +207,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-
 socket.on('mostrarFechaHora', (data) => {
   const { fechaHora, tipoCurso } = data;
 
@@ -277,6 +275,36 @@ socket.on('alumnosData', (data) => {
   generarTablasYRuletas(alumnosClasificados, tipoCurso);
 });
 
+async function obtenerNumerosAleatorios(cantidad, min = 1, max = 100) {
+  const requestData = {
+    jsonrpc: "2.0",
+    method: "generateIntegers",
+    params: {
+      apiKey: apiKey,
+      n: cantidad,    // Cantidad de números aleatorios
+      min: min,       // Valor mínimo del rango
+      max: max,       // Valor máximo del rango
+      replacement: false // No permitir duplicados
+    },
+    id: 1
+  };
+
+  try {
+    const response = await fetch(urlRandomOrg, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(requestData)
+    });
+    const data = await response.json();
+    return data.result ? data.result.random.data : null;
+  } catch (error) {
+    console.error("Error al hacer la solicitud a Random.org:", error);
+    return null;
+  }
+}
+
 async function iniciarGirosTodos(fecha, hora) {
   const ahora = new Date();
   const fechaHoraObjetivo = new Date(`${fecha}T${hora}`);
@@ -307,7 +335,7 @@ async function iniciarGirosTodos(fecha, hora) {
       await Promise.all(promesasGiros);
       console.log("Todas las ruletas han terminado de girar.");
 
-      enviarGanadoresAlServidor();
+      //enviarGanadoresAlServidor();
 
     }, tiempoRestante);
   } else {
@@ -469,21 +497,32 @@ function llenarTablaDeAlumnos(sectionId, alumnos) {
   section.innerHTML = tablaHtml;
 }
 
-function dibujarRuleta(numeros, canvasId, shouldSpin = false, tablaId, girosRestantes = 3) {
-  return new Promise((resolve) => {
+async function dibujarRuleta(numeros, canvasId, shouldSpin = false, tablaId, girosRestantes = 3) {
+  return new Promise(async (resolve) => {
     const canvas = document.getElementById(canvasId);
     const ctx = canvas.getContext("2d");
     const arc = Math.PI / (numeros.length / 2);
-    let spinAngleStart = Math.random() * 10 + 10;
+    
+    // Obtén los números aleatorios para spinAngleStart y spinTimeTotal
+    const aleatorios = await obtenerNumerosAleatorios(2, 10, 20); // Para angle y time
+    // Modificar el tiempo de giro para estar entre 5 y 10 segundos
+    const tiempoGiro = await obtenerNumerosAleatorios(1, 5, 10);
+    
+    if (!aleatorios) {
+      console.error("No se pudieron obtener los números aleatorios");
+      resolve();
+      return;
+    }
+    
+    let spinAngleStart = aleatorios[0]; // Ángulo inicial de giro
     let spinTime = 0;
-    let spinTimeTotal = Math.random() * 3 + 4 * 1000;
+    let spinTimeTotal = tiempoGiro[0] * 1000; // Tiempo total de giro (en milisegundos)
     let startAngle = 0;
-    let spinTimeout = null;
 
     if (shouldSpin) {
-      rotateWheel(); // Iniciar el giro si está habilitado
+      rotateWheel();
     } else {
-      drawStaticWheel(); // Solo dibujar la ruleta estática si no está habilitado el giro
+      drawStaticWheel();
     }
 
     function drawStaticWheel() {
@@ -518,7 +557,6 @@ function dibujarRuleta(numeros, canvasId, shouldSpin = false, tablaId, girosRest
         ctx.restore();
       }
 
-      // Dibuja la flecha en la parte superior de la ruleta
       drawArrow(centerX, centerY, outsideRadius);
     }
 
@@ -535,28 +573,20 @@ function dibujarRuleta(numeros, canvasId, shouldSpin = false, tablaId, girosRest
     }
 
     function stopRotateWheel() {
-      clearTimeout(spinTimeout);
       const degrees = startAngle * 180 / Math.PI + 90;
       const arcd = arc * 180 / Math.PI;
       const index = Math.floor((360 - degrees % 360) / arcd);
       const ganador = numeros[index];
-
-      // Marcar la tabla asociada con el número ganador
       marcarGanadorEnTabla(tablaId, ganador);
-
-      // Almacenar el ganador en el arreglo de ganadores
       guardarGanadorEnArreglo(tablaId, ganador);
-
-      // Eliminar el ganador de la lista para el siguiente giro
       numeros.splice(index, 1);
 
-      // Si quedan más giros, volver a llamar la función
       if (girosRestantes > 1 && numeros.length > 0) {
         setTimeout(() => {
           dibujarRuleta(numeros, canvasId, true, tablaId, girosRestantes - 1).then(resolve);
-        }, 1000); // Pausa de 1 segundo entre giros
+        }, 1000);
       } else {
-        resolve(); // Resolver la promesa cuando termine el último giro
+        resolve();
       }
     }
 
@@ -581,6 +611,7 @@ function dibujarRuleta(numeros, canvasId, shouldSpin = false, tablaId, girosRest
     }
   });
 }
+
 
 function guardarGanadorEnArreglo(tablaId, ganador) {
   // Extraer los elementos del ID, eliminando el prefijo 'estudiantes-' y dividiéndolo correctamente
