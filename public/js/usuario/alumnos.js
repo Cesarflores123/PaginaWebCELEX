@@ -1,8 +1,10 @@
 const socket = io();
-const apiKey = "561a7023-5e35-40df-b6bd-45dfdc149ae8"; // Tu clave de API de Random.org
+//const apiKey = "561a7023-5e35-40df-b6bd-45dfdc149ae8"; // Tu clave de API de Random.org MIO
+const apiKey = "04101b23-e033-493c-abb5-12f5b6933fdd"; // Tu clave de API de Random.org HAZ
 const urlRandomOrg = "https://api.random.org/json-rpc/4/invoke";
 let alumnosClasificados = {};
 
+let estadoRuletas = {}; // Almacena el estado de cada ruleta
 // Variable global para almacenar el tipo de curso seleccionado
 let tipoCursoSeleccionado = null;
 
@@ -25,7 +27,7 @@ document.getElementById('resultados-button').addEventListener('click', async () 
             <input type="text" id="buscarBoleta" placeholder="Buscar por boleta..." class="w-full px-4 py-2 border border-gray-300 rounded mb-4" />
           </div>
           <div class="overflow-x-auto"> <!-- Habilitar scroll horizontal en dispositivos pequeños -->
-            <table id="tablaGanadores" class="min-w-full table-auto w-full bg-white rounded-lg shadow-lg">
+            <table id="tablaGanadores" class="min-w-full table-auto w-full bg-white rounded-lg shadow-lg border-separate">
               <thead>
                 <tr class="bg-guinda text-white uppercase text-xs sm:text-sm">
                   <th class="px-8 py-2 min-w-[200px] whitespace-nowrap">Boleta</th> <!-- Ancho más amplio -->
@@ -275,67 +277,42 @@ socket.on('alumnosData', (data) => {
   generarTablasYRuletas(alumnosClasificados, tipoCurso);
 });
 
-async function obtenerNumerosAleatorios(cantidad, min = 1, max = 100) {
-  const requestData = {
-    jsonrpc: "2.0",
-    method: "generateIntegers",
-    params: {
-      apiKey: apiKey,
-      n: cantidad,    // Cantidad de números aleatorios
-      min: min,       // Valor mínimo del rango
-      max: max,       // Valor máximo del rango
-      replacement: false // No permitir duplicados
-    },
-    id: 1
-  };
-
-  try {
-    const response = await fetch(urlRandomOrg, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(requestData)
-    });
-    const data = await response.json();
-    return data.result ? data.result.random.data : null;
-  } catch (error) {
-    console.error("Error al hacer la solicitud a Random.org:", error);
-    return null;
-  }
-}
-
 async function iniciarGirosTodos(fecha, hora) {
   const ahora = new Date();
   const fechaHoraObjetivo = new Date(`${fecha}T${hora}`);
-
-  // Calcular el tiempo restante hasta la fecha y hora objetivo
   const tiempoRestante = fechaHoraObjetivo - ahora;
 
   if (tiempoRestante > 0) {
     console.log(`Iniciando giros en ${tiempoRestante / 1000} segundos...`);
-
-    // Programar el inicio del giro
     setTimeout(async () => {
       const promesasGiros = idsCanvas.map(async (canvasId, index) => {
-        const tablaId = idsTablas[index];  // Obtener el ID de la tabla correspondiente
-        const numeros = obtenerNumerosDeTabla(tablaId);  // Obtener los números de la tabla
+        const tablaId = idsTablas[index];
+        const numeros = obtenerNumerosDeTabla(tablaId);
 
         // Verificar si la tabla tiene 3 o menos estudiantes
         if (numeros.length <= 3) {
           console.log(`No se necesita giro para la tabla ${tablaId} con solo ${numeros.length} estudiantes.`);
-          return; // No giramos la ruleta si hay 3 o menos estudiantes
+          return;
         }
 
-        // Esperar que cada ruleta termine antes de marcar el resultado
-        await dibujarRuleta(numeros, canvasId, true, tablaId, 3);
+        const ruletaId = idsRuletas[index];
+        const primerGiro = 1;
+
+        // Solicitar el ángulo y tiempo inicial desde el servidor para el primer giro
+        socket.emit('solicitarValoresRuleta', { ruletaId, giro: primerGiro });
+
+        return new Promise((resolve) => {
+          // Usamos `once` para evitar múltiples escuchas
+          socket.once(`valoresRuleta-${ruletaId}-giro${primerGiro}`, ({ angulo, tiempo }) => {
+            console.log(`Iniciando ruleta con ID ${canvasId} en giro inicial con ángulo: ${angulo} y tiempo: ${tiempo}`);
+            dibujarRuleta(numeros, canvasId, angulo, tiempo, true, tablaId, 3).then(resolve);
+          });
+        });
       });
 
-      // Esperar que todas las ruletas giren al mismo tiempo
       await Promise.all(promesasGiros);
       console.log("Todas las ruletas han terminado de girar.");
-
-      //enviarGanadoresAlServidor();
+      enviarGanadoresAlServidor();
 
     }, tiempoRestante);
   } else {
@@ -374,78 +351,94 @@ function marcarGanadorEnTabla(tablaId, ganador) {
   for (let i = 1; i < filas.length; i++) { // Saltar el encabezado
     const celdaNumero = filas[i].getElementsByTagName('td')[0]; // Primer columna con el número
     if (celdaNumero && celdaNumero.textContent === ganador) {
-      filas[i].classList.add('bg-green-500', 'text-white'); // Mantener marcado
+      filas[i].classList.add('bg-resultados', 'text-white'); // Mantener marcado
     }
   }
 }
 
 function generarTablasYRuletas(alumnosClasificados, tipoCurso) {
   Object.keys(alumnosClasificados).forEach(idioma => {
-    const idiomaLower = idioma.toLowerCase();
+      const idiomaLower = idioma.toLowerCase();
 
-    Object.keys(alumnosClasificados[idioma]).forEach(nivel => {
-      Object.keys(alumnosClasificados[idioma][nivel]).forEach(horario => {
-        const alumnos = alumnosClasificados[idioma][nivel][horario];
+      Object.keys(alumnosClasificados[idioma]).forEach(nivel => {
+          Object.keys(alumnosClasificados[idioma][nivel]).forEach(horario => {
+              const alumnos = alumnosClasificados[idioma][nivel][horario];
 
-        const nivelFormatted = nivel.replace(/\s+/g, '');
-        const horarioFormatted = horario.replace(/\s+/g, '');
+              const nivelFormatted = nivel.replace(/\s+/g, '');
+              const horarioFormatted = horario.replace(/\s+/g, '');
 
-        const divId = `estudiantes-ruleta-${idiomaLower}-${nivelFormatted}-${horarioFormatted}`;
-        const estudiantesId = `estudiantes-${idiomaLower}-${nivelFormatted}-${horarioFormatted}-tabla`;
-        const ruletaId = `ruleta-${idiomaLower}-${nivelFormatted}-${horarioFormatted}-ruleta`;
-        const canvasId = `canvas-${idiomaLower}-${nivelFormatted}-${horarioFormatted}-ruleta`;
-        const botonId = `spin-${idiomaLower}-${nivelFormatted}-${horarioFormatted}-ruleta`;
+              const divId = `estudiantes-ruleta-${idiomaLower}-${nivelFormatted}-${horarioFormatted}`;
+              const estudiantesId = `estudiantes-${idiomaLower}-${nivelFormatted}-${horarioFormatted}-tabla`;
+              const ruletaId = `ruleta-${idiomaLower}-${nivelFormatted}-${horarioFormatted}-ruleta`;
+              const canvasId = `canvas-${idiomaLower}-${nivelFormatted}-${horarioFormatted}-ruleta`;
+              const botonId = `spin-${idiomaLower}-${nivelFormatted}-${horarioFormatted}-ruleta`;
 
-        const seccion = tipoCurso === 'I' ? `${idiomaLower}-intensivo` : `${idiomaLower}-sabatino`;
-        const contenedor = document.getElementById(seccion);
+              const seccion = tipoCurso === 'I' ? `${idiomaLower}-intensivo` : `${idiomaLower}-sabatino`;
+              const contenedor = document.getElementById(seccion);
 
-        if (!contenedor) {
-          console.error(`El contenedor para el idioma ${idioma} no existe en el DOM.`);
-          return;
-        }
+              if (!contenedor) {
+                  console.error(`El contenedor para el idioma ${idioma} no existe en el DOM.`);
+                  return;
+              }
 
-        const estudiantesRuletaHtml = `
-          <div id="${divId}" class="flex flex-col md:flex-row w-full py-4 gap-4">
-            <div id="${estudiantesId}" class="w-full md:w-1/2 py-4 text-center"></div>
-            <div id="${ruletaId}" class="relative w-full md:w-1/2 p-4 flex flex-col items-center text-center">
-              <div id="spin-container" class="relative w-full h-[300px] bg-white bg-opacity-50 rounded-lg flex flex-col items-center justify-start">
-                <canvas id="${canvasId}" class="absolute top-0 left-0 w-full h-full bg-slate-600"></canvas>
-                <button id="${botonId}" class="mt-4 bg-green-500 text-white px-4 py-2 rounded-full">Girar</button>
-              </div>
-            </div>
-          </div>`;
+              const estudiantesRuletaHtml = `
+                  <div id="${divId}" class="flex flex-col md:flex-row w-full py-4 gap-4">
+                      <div id="${estudiantesId}" class="w-full md:w-1/2 py-4 text-center"></div>
+                      <div id="${ruletaId}" class="relative w-full md:w-1/2 p-4 flex flex-col items-center text-center">
+                          <div id="spin-container" class="relative w-full h-[300px] bg-white bg-opacity-50 rounded-lg flex flex-col items-center justify-start">
+                              <canvas id="${canvasId}" class="absolute top-0 left-0 w-full h-full bg-slate-600"></canvas>
+                              <button id="${botonId}" class="mt-4 bg-green-500 text-white px-4 py-2 rounded-full">Girar</button>
+                          </div>
+                      </div>
+                  </div>`;
 
-        contenedor.insertAdjacentHTML('beforeend', estudiantesRuletaHtml);
+              contenedor.insertAdjacentHTML('beforeend', estudiantesRuletaHtml);
 
-        idsTablas.push(estudiantesId);
-        idsRuletas.push(ruletaId);
-        idsCanvas.push(canvasId);
+              idsTablas.push(estudiantesId);
+              idsRuletas.push(ruletaId);
+              idsCanvas.push(canvasId);
 
-        // Llenar la tabla con los alumnos
-        llenarTablaDeAlumnos(estudiantesId, alumnos);
+              // Llenar la tabla con los alumnos
+              llenarTablaDeAlumnos(estudiantesId, alumnos);
 
-        const numeros = alumnos.map((_, index) => (index + 1).toString());
-        ajustarCanvas(canvasId);
+              const numeros = alumnos.map((_, index) => (index + 1).toString());
+              ajustarCanvas(canvasId);
 
-        // Dibujar la ruleta siempre, pero no permitir que gire si hay 3 o menos alumnos
-        dibujarRuleta(numeros, canvasId, false); // Dibuja la ruleta siempre
+              // Enviar ID de ruleta al servidor antes de dibujarla
+              const giroInicial = 1;
+              socket.emit('solicitarValoresRuleta', { ruletaId, giro: giroInicial });
 
-        if (numeros.length <= 3) {
-          alumnos.forEach((alumno, index) => {
-            marcarGanadorEnTabla(estudiantesId, (index + 1).toString()); // Marcar ganador
-            guardarGanadorEnArreglo(estudiantesId, (index + 1).toString()); // Guardar en el arreglo
+              // Escuchar los valores de ángulo y tiempo para el primer giro
+              socket.on(`valoresRuleta-${ruletaId}-giro${giroInicial}`, ({ angulo, tiempo }) => {
+                  console.log("RULETA: " + ruletaId);
+                  console.log("Angulo: " + angulo);
+                  console.log("Tiempo: " + tiempo);
+                  // Dibujar la ruleta siempre, pero no permitir que gire si hay 3 o menos alumnos
+                  dibujarRuleta(numeros, canvasId, angulo, tiempo, false);
+              });
+
+              if (numeros.length <= 3) {
+                  alumnos.forEach((alumno, index) => {
+                      marcarGanadorEnTabla(estudiantesId, (index + 1).toString());
+                      guardarGanadorEnArreglo(estudiantesId, (index + 1).toString());
+                  });
+                  // Deshabilitar el botón de giro si hay 3 o menos alumnos
+                  const botonGirar = document.getElementById(botonId);
+                  botonGirar.disabled = true;
+                  botonGirar.classList.add('bg-gray-500', 'cursor-not-allowed');
+              } else {
+                  document.getElementById(botonId).addEventListener('click', () => {
+                      dibujarRuleta(numeros, canvasId, true);
+                  });
+              }
           });
-          // Deshabilitar el botón de giro si hay 3 o menos alumnos
-          const botonGirar = document.getElementById(botonId);
-          botonGirar.disabled = true;
-          botonGirar.classList.add('bg-gray-500', 'cursor-not-allowed');
-        } else {
-          document.getElementById(botonId).addEventListener('click', () => {
-            dibujarRuleta(numeros, canvasId, true);
-          });
-        }
       });
-    });
+  });
+
+  // Contar e imprimir los IDs de las ruletas generadas
+  console.log(`Total de ruletas generadas: ${idsRuletas.length}`);
+  idsRuletas.forEach((id, index) => {
+      console.log(`ID de la ruleta ${index + 1}: ${id}`);
   });
 }
 
@@ -467,7 +460,7 @@ function llenarTablaDeAlumnos(sectionId, alumnos) {
 
   const tablaHtml = `
     <div class="overflow-x-auto">
-    <table class="table-auto w-full bg-negro-tranparencia">
+    <table class="table-auto w-full bg-negro-tranparencia border-separate">
       <thead>
         <tr class="bg-guinda text-white uppercase text-xs sm:text-sm">
           <th class="px-4 py-2 text-white">#</th>
@@ -497,67 +490,28 @@ function llenarTablaDeAlumnos(sectionId, alumnos) {
   section.innerHTML = tablaHtml;
 }
 
-async function dibujarRuleta(numeros, canvasId, shouldSpin = false, tablaId, girosRestantes = 3) {
+async function dibujarRuleta(numeros, canvasId, angulo, tiempo, shouldSpin = false, tablaId, girosRestantes = 3) {
   return new Promise(async (resolve) => {
     const canvas = document.getElementById(canvasId);
     const ctx = canvas.getContext("2d");
     const arc = Math.PI / (numeros.length / 2);
-    
-    // Obtén los números aleatorios para spinAngleStart y spinTimeTotal
-    const aleatorios = await obtenerNumerosAleatorios(2, 10, 20); // Para angle y time
-    // Modificar el tiempo de giro para estar entre 5 y 10 segundos
-    const tiempoGiro = await obtenerNumerosAleatorios(1, 5, 10);
-    
-    if (!aleatorios) {
-      console.error("No se pudieron obtener los números aleatorios");
-      resolve();
+
+    if (!canvas || !ctx) {
+      console.error(`No se encontró el canvas con ID: ${canvasId} o no se pudo obtener su contexto`);
       return;
     }
-    
-    let spinAngleStart = aleatorios[0]; // Ángulo inicial de giro
+
+    console.log(`Iniciando ruleta con ID ${canvasId}, shouldSpin: ${shouldSpin}, ángulo: ${angulo}, tiempo: ${tiempo}`);
+
+    let spinAngleStart = angulo || 10;
     let spinTime = 0;
-    let spinTimeTotal = tiempoGiro[0] * 1000; // Tiempo total de giro (en milisegundos)
+    let spinTimeTotal = (tiempo || 5) * 1000;
     let startAngle = 0;
 
     if (shouldSpin) {
       rotateWheel();
     } else {
       drawStaticWheel();
-    }
-
-    function drawStaticWheel() {
-      const outsideRadius = canvas.width / 2 - 10;
-      const insideRadius = outsideRadius * 0.6;
-      const textRadius = outsideRadius * 0.85;
-      const centerX = canvas.width / 2;
-      const centerY = canvas.height / 2;
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      for (let i = 0; i < numeros.length; i++) {
-        const angle = startAngle + i * arc;
-        ctx.fillStyle = i % 2 === 0 ? "#d3d3d3" : "#808080";
-
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, outsideRadius, angle, angle + arc, false);
-        ctx.arc(centerX, centerY, insideRadius, angle + arc, angle, true);
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.save();
-        ctx.translate(
-          centerX + Math.cos(angle + arc / 2) * textRadius,
-          centerY + Math.sin(angle + arc / 2) * textRadius
-        );
-        ctx.rotate(angle + arc / 2 + Math.PI / 2);
-        ctx.fillStyle = "black";
-        ctx.font = '12px Helvetica';
-        const text = numeros[i];
-        ctx.fillText(text, -ctx.measureText(text).width / 2, 0);
-        ctx.restore();
-      }
-
-      drawArrow(centerX, centerY, outsideRadius);
     }
 
     function rotateWheel() {
@@ -582,12 +536,58 @@ async function dibujarRuleta(numeros, canvasId, shouldSpin = false, tablaId, gir
       numeros.splice(index, 1);
 
       if (girosRestantes > 1 && numeros.length > 0) {
-        setTimeout(() => {
-          dibujarRuleta(numeros, canvasId, true, tablaId, girosRestantes - 1).then(resolve);
-        }, 1000);
+        const siguienteGiro = 4 - girosRestantes + 1;
+        socket.emit('solicitarValoresRuleta', { ruletaId: canvasId, giro: siguienteGiro });
+        
+        // Escucha para el siguiente giro
+        socket.once(`valoresRuleta-${canvasId}-giro${siguienteGiro}`, ({ angulo, tiempo }) => {
+          setTimeout(() => {
+            dibujarRuleta(numeros, canvasId, angulo, tiempo, true, tablaId, girosRestantes - 1).then(resolve);
+          }, 1000);
+        });
       } else {
+        // Si es la tercera vuelta, emitir evento para limpiar el servidor
+        if (girosRestantes === 1) {
+          socket.emit('limpiarValoresRuleta', { ruletaId: canvasId });
+          console.log(`Solicitando al servidor que limpie los valores de la ruleta ${canvasId}.`);
+        }
         resolve();
       }
+    }
+
+    function drawStaticWheel() {
+      const outsideRadius = canvas.width / 2 - 10;
+      const insideRadius = outsideRadius * 0.6;
+      const textRadius = outsideRadius * 0.85;
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let i = 0; i < numeros.length; i++) {
+        const angle = startAngle + i * arc;
+        ctx.fillStyle = i % 2 === 0 ? "#460000" : "#62152d";
+
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, outsideRadius, angle, angle + arc, false);
+        ctx.arc(centerX, centerY, insideRadius, angle + arc, angle, true);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.save();
+        ctx.translate(
+          centerX + Math.cos(angle + arc / 2) * textRadius,
+          centerY + Math.sin(angle + arc / 2) * textRadius
+        );
+        ctx.rotate(angle + arc / 2 + Math.PI / 2);
+        ctx.fillStyle = "white";
+        ctx.font = '12px Helvetica';
+        const text = numeros[i];
+        ctx.fillText(text, -ctx.measureText(text).width / 2, 0);
+        ctx.restore();
+      }
+
+      drawArrow(centerX, centerY, outsideRadius);
     }
 
     function drawArrow(centerX, centerY, outsideRadius) {
@@ -612,7 +612,6 @@ async function dibujarRuleta(numeros, canvasId, shouldSpin = false, tablaId, gir
   });
 }
 
-
 function guardarGanadorEnArreglo(tablaId, ganador) {
   // Extraer los elementos del ID, eliminando el prefijo 'estudiantes-' y dividiéndolo correctamente
   const partes = tablaId.replace('estudiantes-', '').split('-');
@@ -633,14 +632,7 @@ function guardarGanadorEnArreglo(tablaId, ganador) {
         const nombre = filas[i].getElementsByTagName('td')[2].textContent;
 
         // Guardar el ganador en el arreglo global
-        ganadores.push({
-          idioma,
-          nivel,
-          horario,
-          boleta,
-          nombre
-        });
-
+        ganadores.push({idioma,nivel,horario,boleta,nombre});
         break;
       }
     }

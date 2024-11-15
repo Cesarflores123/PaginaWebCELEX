@@ -10,7 +10,7 @@
     color: #460000;
   }
   
-  .bg-guinda-idiomas {
+  .bg-verde-idiomas {
     background-color: #003e1c;
   }
   
@@ -93,5 +93,61 @@
     font-size: 1.875rem; /* 30px */
 line-height: 2.25rem; /* 36px */
   }
+  
+  .bg-ingles{
+    background: linear-gradient(
+      to right, 
+      #122b72, 
+      #707091, 
+      #9d98aa, 
+      #c0b8c0, 
+      #ded3d3, 
+      #b19797, 
+      #966e6e, 
+      #865252,
+      #742323
+    );
+ }
+  .bg-francia{
+    background: linear-gradient(
+      to right, 
+        #023342, 
+        #72787e,
+        #a1a2a5,
+        #e3dfe0,
+        #b29e9f,
+        #947071,
+        #6e0b0c
+    );
+  }
+  .bg-italia{
+    background: linear-gradient(
+      to right, 
+      #034a2f, 
+      #587062,
+      #7c8c83,
+      #b0b8b3,
+      #f9f9f9,
+      #c0b0b0,
+      #9c7d7d,
+      #875959,
+      #6e0b0c
+    );
+  }
 
+  .bg-alemania{
+    background: linear-gradient(
+      to bottom, 
+      #1c1a1a, 
+      #3c1717,
+      #501414,
+      #601010,
+      #6e0b0c,
+      #8f622c,
+      #aa8a3d,
+      #c1a94b,
+      #d6c356
+    );
+  }
+  
   /*  ------------------ ----------------- ----------------  */

@@ -1,5 +1,11 @@
 import { connection } from './config/db.mjs'; // Conexión a la base de datos
 import util from 'util'; // Utilizamos util para promisificar las consultas
+import fetch from 'node-fetch'; // Si usas Node.js 18 o inferior, instala node-fetch.
+
+const apiKey = "561a7023-5e35-40df-b6bd-45dfdc149ae8";
+const urlRandomOrg = "https://api.random.org/json-rpc/4/invoke";
+
+const resultadosRuletas = {}; // Almacenará valores de cada ruleta por ID
 
 export function initializeWebSocketAlumnos(io) {
   const query = util.promisify(connection.query).bind(connection);
@@ -53,70 +59,95 @@ export function initializeWebSocketAlumnos(io) {
       io.emit('mostrarFechaHora', { fechaHora, tipoCurso });
     });
 
-    // Capturar el evento 'guardarGanadores' para almacenar los ganadores en la base de datos
+    socket.on('solicitarValoresRuleta', async ({ ruletaId, giro }) => {
+      // Solo genera nuevos valores si no existen para esta ruleta y giro
+      if (!resultadosRuletas[ruletaId]) {
+        const angulos = await obtenerNumerosAleatorios(3, 10, 20); // Tres ángulos para los tres giros
+        const tiempos = await obtenerNumerosAleatorios(3, 5, 10);   // Tres tiempos para los tres giros
+        resultadosRuletas[ruletaId] = { angulos, tiempos };
+      }
+    
+      // Asigna el ángulo y tiempo para el giro solicitado desde el almacenamiento
+      const angulo = resultadosRuletas[ruletaId].angulos[giro - 1];
+      const tiempo = resultadosRuletas[ruletaId].tiempos[giro - 1];
+    
+      if (angulo !== undefined && tiempo !== undefined) {
+        // Emite el mismo valor a todos los clientes para sincronizar las ruletas
+        io.emit(`valoresRuleta-${ruletaId}-giro${giro}`, { angulo, tiempo });
+      } else {
+        console.error("No se recibieron valores válidos para el ángulo o el tiempo.");
+      }
+    });
+    
+    // Escuchar evento para limpiar los valores de la ruleta después del tercer giro
+    socket.on('limpiarValoresRuleta', ({ ruletaId }) => {
+      if (resultadosRuletas[ruletaId]) {
+        delete resultadosRuletas[ruletaId]; // Limpia los valores de la ruleta específica
+        console.log(`Valores de la ruleta ${ruletaId} eliminados del servidor después del tercer giro.`);
+      } else {
+        console.error(`No se encontraron valores para la ruleta ${ruletaId} al intentar limpiar.`);
+      }
+    });
+
+    // Modificar el evento de guardar ganadores en el servidor
     socket.on('guardarGanadores', async (ganadores) => {
       console.log('Ganadores recibidos:', ganadores);
-    
+
       try {
-        // Comprobar si tipoCursoGlobal tiene un valor antes de continuar
         if (!tipoCursoGlobal) {
           console.error("Error: tipoCurso no definido en el contexto de 'guardarGanadores'.");
           return;
         }
-    
-        // Obtener el último ciclo y curso
+
         const ultimoCiclo = await obtenerUltimoCiclo(query);
         const ultimoCurso = await obtenerUltimoCurso(query, ultimoCiclo, tipoCursoGlobal);
-    
+
         for (const ganador of ganadores) {
           const { boleta, idioma, nivel, horario } = ganador;
-    
-          // Convertir el idioma a mayúsculas
+
           const idiomaMayusculas = idioma.toUpperCase();
-    
-          // Obtener el id_idioma usando el valor del idioma en mayúsculas
-          const idiomaResult = await query(`
-            SELECT id_idioma 
-            FROM Idiomas 
-            WHERE UPPER(idioma) = ?
-          `, [idiomaMayusculas]);
-    
+          const idiomaResult = await query(`SELECT id_idioma FROM Idiomas WHERE UPPER(idioma) = ?`, [idiomaMayusculas]);
+
           if (idiomaResult.length === 0) {
             console.error(`Error: Idioma ${idioma} no encontrado.`);
-            continue; // Saltar al siguiente ganador si el idioma no existe
+            continue;
           }
-    
+
           const id_idioma = idiomaResult[0].id_idioma;
-    
-          // Buscar la inscripción correspondiente a este ganador con la boleta, id_idioma, ciclo y curso
-          const inscripcion = await query(`
-            SELECT id_idioma, id_nivel, id_horario, id_ciclo, id_curso, boleta 
-            FROM Inscripciones 
-            WHERE boleta = ? AND id_idioma = ? AND id_ciclo = ? AND id_curso = ?
-          `, [boleta, id_idioma, ultimoCiclo, ultimoCurso]);
-    
+          const inscripcion = await query(`SELECT id_idioma, id_nivel, id_horario, id_ciclo, id_curso, boleta 
+                                          FROM Inscripciones 
+                                          WHERE boleta = ? AND id_idioma = ? AND id_ciclo = ? AND id_curso = ?`, 
+                                          [boleta, id_idioma, ultimoCiclo, ultimoCurso]);
+
           if (inscripcion.length > 0) {
-            // Obtener el último id_ganador
-            const result = await query(`SELECT MAX(id_ganador) as ultimoGanador FROM Ganadores`);
-            const nuevoIdGanador = (result[0].ultimoGanador || 0) + 1;
-    
-            // Insertar en la tabla Ganadores
-            await query(`
-              INSERT INTO Ganadores (id_ganador, id_idioma, id_nivel, id_horario, id_ciclo, id_curso, boleta)
-              VALUES (?, ?, ?, ?, ?, ?, ?)
-            `, [nuevoIdGanador, inscripcion[0].id_idioma, inscripcion[0].id_nivel, inscripcion[0].id_horario, inscripcion[0].id_ciclo, inscripcion[0].id_curso, boleta]);
-    
-            console.log(`Ganador guardado: ${boleta}, Idioma: ${idioma}, Nivel: ${inscripcion[0].id_nivel}`);
+            // Comprobar si ya existe este ganador en la tabla antes de guardarlo
+            const existeGanador = await query(`
+              SELECT 1 FROM Ganadores 
+              WHERE boleta = ? AND id_idioma = ? AND id_nivel = ? AND id_horario = ? AND id_ciclo = ? AND id_curso = ?
+            `, [boleta, id_idioma, inscripcion[0].id_nivel, inscripcion[0].id_horario, inscripcion[0].id_ciclo, inscripcion[0].id_curso]);
+
+            if (existeGanador.length === 0) {
+              const result = await query(`SELECT MAX(id_ganador) as ultimoGanador FROM Ganadores`);
+              const nuevoIdGanador = (result[0].ultimoGanador || 0) + 1;
+
+              await query(`INSERT INTO Ganadores (id_ganador, id_idioma, id_nivel, id_horario, id_ciclo, id_curso, boleta)
+                          VALUES (?, ?, ?, ?, ?, ?, ?)`, 
+                          [nuevoIdGanador, inscripcion[0].id_idioma, inscripcion[0].id_nivel, inscripcion[0].id_horario, inscripcion[0].id_ciclo, inscripcion[0].id_curso, boleta]);
+
+              console.log(`Ganador guardado: ${boleta}, Idioma: ${idioma}, Nivel: ${inscripcion[0].id_nivel}`);
+            } else {
+              console.log(`El ganador con boleta ${boleta} ya está registrado en el ciclo y curso actual.`);
+            }
           } else {
             console.log(`La boleta ${boleta} no está inscrita en el idioma, ciclo o curso actual.`);
           }
         }
-    
+
         console.log('Todos los ganadores han sido procesados.');
       } catch (err) {
         console.error('Error al guardar los ganadores:', err);
       }
-    });    
+    });
 
     // Evento para obtener los últimos ganadores
     socket.on('obtenerUltimosGanadores', async () => {
@@ -176,4 +207,49 @@ async function obtenerAlumnos(query, ciclo, curso) {
   `, [ciclo, curso]);
 
   return result;
+}
+
+async function obtenerNumerosAleatorios(cantidad, min = 1, max = 100) {
+  const requestData = {
+    jsonrpc: "2.0",
+    method: "generateIntegers",
+    params: {
+      apiKey: apiKey,
+      n: cantidad,
+      min: min,
+      max: max,
+      replacement: false
+    },
+    id: 1
+  };
+
+  try {
+    const response = await fetch(urlRandomOrg, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(requestData)
+    });
+
+    // Verificar si la respuesta tiene el encabezado correcto de JSON antes de parsear
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      const data = await response.json();
+
+      // Validar que el JSON contenga los datos esperados
+      if (data && data.result && data.result.random && data.result.random.data) {
+        return data.result.random.data;
+      } else {
+        console.error("Respuesta JSON no válida de Random.org:", data);
+        return null;
+      }
+    } else {
+      console.error("La respuesta no es JSON, es probable que sea HTML:", await response.text());
+      return null;
+    }
+  } catch (error) {
+    console.error("Error al hacer la solicitud a Random.org:", error);
+    return null;
+  }
 }
