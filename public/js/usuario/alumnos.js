@@ -1,11 +1,9 @@
 const socket = io();
-//const apiKey = "561a7023-5e35-40df-b6bd-45dfdc149ae8"; // Tu clave de API de Random.org MIO
-const apiKey = "04101b23-e033-493c-abb5-12f5b6933fdd"; // Tu clave de API de Random.org HAZ
+const apiKey = "04101b23-e033-493c-abb5-12f5b6933fdd";
 const urlRandomOrg = "https://api.random.org/json-rpc/4/invoke";
 let alumnosClasificados = {};
 
-let estadoRuletas = {}; // Almacena el estado de cada ruleta
-// Variable global para almacenar el tipo de curso seleccionado
+let estadoRuletas = {}; 
 let tipoCursoSeleccionado = null;
 
 let idsTablas = [];
@@ -13,15 +11,18 @@ let idsRuletas = [];
 let idsCanvas = []; 
 let ganadores = [];
 
+window.addEventListener('beforeunload', () => {
+  if (socket) {
+    console.log('Desconectando socket antes de cerrar la ventana.');
+    socket.disconnect();
+  }
+});
+
 document.getElementById('resultados-button').addEventListener('click', async () => {
   try {
-    // Emitir evento para obtener los últimos ganadores
     socket.emit('obtenerUltimosGanadores');
-
-    // Escuchar los datos de los ganadores desde el servidor
     socket.on('ultimosGanadores', (ganadores) => {
       if (ganadores.length > 0) {
-        // Crear la tabla de ganadores en HTML con un campo de búsqueda
         let tablaGanadores = `
           <div class="mb-4">
             <input type="text" id="buscarBoleta" placeholder="Buscar por boleta..." class="w-full px-4 py-2 border border-gray-300 rounded mb-4" />
@@ -58,26 +59,23 @@ document.getElementById('resultados-button').addEventListener('click', async () 
         </div>
         `;
 
-        // Mostrar la tabla en un SweetAlert2 modal
         Swal.fire({
           title: '🎉 ¡Felicidades a los Ganadores! 🎉',
           html: tablaGanadores,
           width: '80%',
           confirmButtonText: 'Cerrar',
-          confirmButtonColor: '#7b1e26', // Botón de cerrar guinda
+          confirmButtonColor: '#7b1e26',
           didOpen: () => {
-            lanzarConfeti(); // Lanzar confeti cuando se abra el modal
+            lanzarConfeti(); 
 
-            // Buscar boleta en tiempo real
             const buscarBoletaInput = document.getElementById('buscarBoleta');
             buscarBoletaInput.addEventListener('input', function () {
               const filter = buscarBoletaInput.value.toUpperCase();
               const table = document.getElementById('tablaGanadores');
               const tr = table.getElementsByTagName('tr');
 
-              // Recorrer todas las filas de la tabla y ocultar las que no coincidan
-              for (let i = 1; i < tr.length; i++) { // Comienza desde 1 para saltar el encabezado
-                const td = tr[i].getElementsByTagName('td')[0]; // Columna de la boleta
+              for (let i = 1; i < tr.length; i++) { 
+                const td = tr[i].getElementsByTagName('td')[0]; 
                 if (td) {
                   const txtValue = td.textContent || td.innerText;
                   if (txtValue.toUpperCase().indexOf(filter) > -1) {
@@ -107,11 +105,9 @@ document.getElementById('resultados-button').addEventListener('click', async () 
     });
   }
 });
-// Función para lanzar confeti
-function lanzarConfeti() {
-  var end = Date.now() + (2 * 1000); // Duración del confeti: 2 segundos
 
-  // Configuración de confeti para disparar constantemente durante 2 segundos
+function lanzarConfeti() {
+  var end = Date.now() + (2 * 1000); 
   (function frame() {
     confetti({
       particleCount: 2,
@@ -137,19 +133,16 @@ function lanzarConfeti() {
 document.addEventListener('DOMContentLoaded', () => {
   console.log('JavaScript cargado correctamente.');
 
-  // Obtener datos almacenados en localStorage
   const fechaGuardada = localStorage.getItem('fecha');
   const horaGuardada = localStorage.getItem('hora');
   const tipoCursoGuardado = localStorage.getItem('tipoCurso') || 'Intensivo';
   const tipoCursoGuardadoMinusculas = tipoCursoGuardado.toLowerCase();
   console.log('Tipo de curso guardado:', tipoCursoGuardadoMinusculas);
 
-  // Referencias a las secciones
   const seccionIntensivo = document.getElementById('intensivo');
   const seccionSabatino = document.getElementById('sabatino');
   const idiomas = ['ingles', 'frances', 'aleman', 'italiano'];
 
-  // Función para ocultar todas las secciones de idiomas
   const ocultarTodosLosIdiomas = () => {
     console.log('Ocultando todos los idiomas.');
     idiomas.forEach(idioma => {
@@ -158,7 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   };
 
-  // Función para mostrar un idioma específico
   const mostrarIdioma = (idioma) => {
     ocultarTodosLosIdiomas();
     if (tipoCursoGuardadoMinusculas === 'intensivo') {
@@ -172,10 +164,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // Mostrar inglés por defecto al cargar la página
   mostrarIdioma('ingles');
 
-  // Verifica si los elementos se seleccionan y los eventos se agregan correctamente.
   const enlaces = document.querySelectorAll('a[data-idioma]');
     console.log('Enlaces de idiomas encontrados:', enlaces);
 
@@ -190,7 +180,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
 
-  // Emitir datos de acuerdo al tipo de curso
   if (typeof alumnosClasificados !== 'undefined' && tipoCursoGuardado) {
     generarTablasYRuletas(alumnosClasificados, tipoCursoGuardado);
     if (fechaGuardada && horaGuardada) {
@@ -212,7 +201,6 @@ document.addEventListener('DOMContentLoaded', () => {
 socket.on('mostrarFechaHora', (data) => {
   const { fechaHora, tipoCurso } = data;
 
-  // Verificar lo que llega del servidor
   console.log('Datos recibidos del servidor:', fechaHora, tipoCurso);
 
   if (!tipoCurso) {
@@ -220,17 +208,12 @@ socket.on('mostrarFechaHora', (data) => {
     return;
   }
 
-  // Guardar el tipo de curso en localStorage
   localStorage.setItem('tipoCurso', tipoCurso);
 
-  // Separar la fecha y la hora
   const [fecha, hora] = fechaHora.split('T');
 
-  // Guardar la fecha y la hora en localStorage
   localStorage.setItem('fecha', fecha);
   localStorage.setItem('hora', hora);
-
-  // Dependiendo del tipo de curso, realizar la solicitud para obtener los alumnos
   if (tipoCurso === 'INTENSIVO') {
     socket.emit('getAlumnos', { tipoCurso: 'I' });
   } else if (tipoCurso === 'SABATINO') {
@@ -238,7 +221,6 @@ socket.on('mostrarFechaHora', (data) => {
   }
 });
 
-// Cuando recibimos los datos de los alumnos
 socket.on('alumnosData', (data) => {
   const { alumnos, tipoCurso } = data;
   console.log("Tipo de curso recibido:", tipoCurso);
@@ -247,33 +229,26 @@ socket.on('alumnosData', (data) => {
     console.error('Error: tipoCurso no definido en la respuesta del servidor');
   }
 
-  // Reinicializamos el objeto de alumnos clasificados
   alumnosClasificados = {};
 
-  // Procesamos los alumnos y agrupamos por idioma, nivel y horario
   alumnos.forEach(alumno => {
     const { idioma, boleta, nombre, apellido_paterno, nivel, horario, promedio } = alumno;
 
-    // Si el idioma no existe en el objeto, lo creamos
     if (!alumnosClasificados[idioma]) {
       alumnosClasificados[idioma] = {};
     }
 
-    // Si el nivel no existe dentro del idioma, lo creamos
     if (!alumnosClasificados[idioma][nivel]) {
       alumnosClasificados[idioma][nivel] = {};
     }
 
-    // Si el horario no existe dentro del nivel, lo creamos
     if (!alumnosClasificados[idioma][nivel][horario]) {
       alumnosClasificados[idioma][nivel][horario] = [];
     }
 
-    // Finalmente, agregamos los datos del alumno dentro del horario
     alumnosClasificados[idioma][nivel][horario].push({ boleta, nombre, apellido_paterno, nivel, horario, promedio });
   });
 
-  // Llamamos a la función para generar dinámicamente las tablas y ruletas
   generarTablasYRuletas(alumnosClasificados, tipoCurso);
 });
 
@@ -289,7 +264,6 @@ async function iniciarGirosTodos(fecha, hora) {
         const tablaId = idsTablas[index];
         const numeros = obtenerNumerosDeTabla(tablaId);
 
-        // Verificar si la tabla tiene 3 o menos estudiantes
         if (numeros.length <= 3) {
           console.log(`No se necesita giro para la tabla ${tablaId} con solo ${numeros.length} estudiantes.`);
           return;
@@ -298,11 +272,9 @@ async function iniciarGirosTodos(fecha, hora) {
         const ruletaId = idsRuletas[index];
         const primerGiro = 1;
 
-        // Solicitar el ángulo y tiempo inicial desde el servidor para el primer giro
         socket.emit('solicitarValoresRuleta', { ruletaId, giro: primerGiro });
 
         return new Promise((resolve) => {
-          // Usamos `once` para evitar múltiples escuchas
           socket.once(`valoresRuleta-${ruletaId}-giro${primerGiro}`, ({ angulo, tiempo }) => {
             console.log(`Iniciando ruleta con ID ${canvasId} en giro inicial con ángulo: ${angulo} y tiempo: ${tiempo}`);
             dibujarRuleta(numeros, canvasId, angulo, tiempo, true, tablaId, 3).then(resolve);
@@ -330,8 +302,7 @@ function obtenerNumerosDeTabla(tablaId) {
   const filas = tabla.getElementsByTagName('tr');
   const numeros = [];
 
-  // Obtener los números (el índice de las filas) de la tabla
-  for (let i = 1; i < filas.length; i++) { // Saltar el encabezado
+   for (let i = 1; i < filas.length; i++) {
     numeros.push(i.toString());
   }
 
@@ -345,18 +316,17 @@ function marcarGanadorEnTabla(tablaId, ganador) {
     console.error(`No se encontró la tabla con ID: ${tablaId}`);
     return;
   }
-
-  // Buscar la fila con el número ganador y agregar una clase para resaltarla
   const filas = tabla.getElementsByTagName('tr');
-  for (let i = 1; i < filas.length; i++) { // Saltar el encabezado
-    const celdaNumero = filas[i].getElementsByTagName('td')[0]; // Primer columna con el número
+  for (let i = 1; i < filas.length; i++) { 
+    const celdaNumero = filas[i].getElementsByTagName('td')[0]; 
     if (celdaNumero && celdaNumero.textContent === ganador) {
-      filas[i].classList.add('bg-resultados', 'text-white'); // Mantener marcado
+      filas[i].classList.add('bg-resultados', 'text-white'); 
     }
   }
 }
 
 function generarTablasYRuletas(alumnosClasificados, tipoCurso) {
+  const startVisualizationTime = performance.now(); 
   Object.keys(alumnosClasificados).forEach(idioma => {
       const idiomaLower = idioma.toLowerCase();
 
@@ -398,22 +368,18 @@ function generarTablasYRuletas(alumnosClasificados, tipoCurso) {
               idsRuletas.push(ruletaId);
               idsCanvas.push(canvasId);
 
-              // Llenar la tabla con los alumnos
               llenarTablaDeAlumnos(estudiantesId, alumnos);
 
               const numeros = alumnos.map((_, index) => (index + 1).toString());
               ajustarCanvas(canvasId);
 
-              // Enviar ID de ruleta al servidor antes de dibujarla
               const giroInicial = 1;
               socket.emit('solicitarValoresRuleta', { ruletaId, giro: giroInicial });
 
-              // Escuchar los valores de ángulo y tiempo para el primer giro
               socket.on(`valoresRuleta-${ruletaId}-giro${giroInicial}`, ({ angulo, tiempo }) => {
                   console.log("RULETA: " + ruletaId);
                   console.log("Angulo: " + angulo);
                   console.log("Tiempo: " + tiempo);
-                  // Dibujar la ruleta siempre, pero no permitir que gire si hay 3 o menos alumnos
                   dibujarRuleta(numeros, canvasId, angulo, tiempo, false);
               });
 
@@ -422,7 +388,6 @@ function generarTablasYRuletas(alumnosClasificados, tipoCurso) {
                       marcarGanadorEnTabla(estudiantesId, (index + 1).toString());
                       guardarGanadorEnArreglo(estudiantesId, (index + 1).toString());
                   });
-                  // Deshabilitar el botón de giro si hay 3 o menos alumnos
                   const botonGirar = document.getElementById(botonId);
                   botonGirar.disabled = true;
                   botonGirar.classList.add('bg-gray-500', 'cursor-not-allowed');
@@ -440,6 +405,11 @@ function generarTablasYRuletas(alumnosClasificados, tipoCurso) {
   idsRuletas.forEach((id, index) => {
       console.log(`ID de la ruleta ${index + 1}: ${id}`);
   });
+
+  const endVisualizationTime = performance.now(); // Marca de tiempo final
+    const totalVisualizationTime = endVisualizationTime - startVisualizationTime; // Calcula el tiempo total
+    console.log(`Tiempo total para visualizar todas las ruletas: ${totalVisualizationTime.toFixed(2)} ms`);
+
 }
 
 function ajustarCanvas(canvasId) {
@@ -539,16 +509,14 @@ async function dibujarRuleta(numeros, canvasId, angulo, tiempo, shouldSpin = fal
         const siguienteGiro = 4 - girosRestantes + 1;
         socket.emit('solicitarValoresRuleta', { ruletaId: canvasId, giro: siguienteGiro });
         
-        // Escucha para el siguiente giro
         socket.once(`valoresRuleta-${canvasId}-giro${siguienteGiro}`, ({ angulo, tiempo }) => {
           setTimeout(() => {
             dibujarRuleta(numeros, canvasId, angulo, tiempo, true, tablaId, girosRestantes - 1).then(resolve);
           }, 1000);
         });
       } else {
-        // Si es la tercera vuelta, emitir evento para limpiar el servidor
         if (girosRestantes === 1) {
-          socket.emit('limpiarValoresRuleta', { ruletaId: canvasId });
+          //socket.emit('limpiarValoresRuleta', { ruletaId: canvasId });
           console.log(`Solicitando al servidor que limpie los valores de la ruleta ${canvasId}.`);
         }
         resolve();
@@ -613,25 +581,21 @@ async function dibujarRuleta(numeros, canvasId, angulo, tiempo, shouldSpin = fal
 }
 
 function guardarGanadorEnArreglo(tablaId, ganador) {
-  // Extraer los elementos del ID, eliminando el prefijo 'estudiantes-' y dividiéndolo correctamente
   const partes = tablaId.replace('estudiantes-', '').split('-');
 
-  // Como el horario contiene un guion, debemos unir las últimas partes para obtener el horario completo, pero eliminando '-tabla'
   const idioma = partes[0];
   const nivel = partes[1];
-  const horario = partes.slice(2).join('-').replace('-tabla', ''); // Eliminar el '-tabla' del final
+  const horario = partes.slice(2).join('-').replace('-tabla', ''); 
 
-  // Obtener los datos del alumno de la tabla (boleta, nombre, etc.)
   const tabla = document.getElementById(tablaId);
   if (tabla) {
     const filas = tabla.getElementsByTagName('tr');
-    for (let i = 1; i < filas.length; i++) { // Saltar el encabezado
+    for (let i = 1; i < filas.length; i++) { 
       const celdaNumero = filas[i].getElementsByTagName('td')[0];
       if (celdaNumero && celdaNumero.textContent === ganador) {
         const boleta = filas[i].getElementsByTagName('td')[1].textContent;
         const nombre = filas[i].getElementsByTagName('td')[2].textContent;
 
-        // Guardar el ganador en el arreglo global
         ganadores.push({idioma,nivel,horario,boleta,nombre});
         break;
       }
@@ -640,5 +604,5 @@ function guardarGanadorEnArreglo(tablaId, ganador) {
 }
 
 function enviarGanadoresAlServidor() {
-  socket.emit('guardarGanadores', ganadores); // Emitir el arreglo de ganadores al servidor
+  socket.emit('guardarGanadores', ganadores); 
 }

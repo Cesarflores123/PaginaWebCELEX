@@ -2,7 +2,11 @@
 module.exports = {
   content: ["./public/**/*.{html,js,css}"],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        guinda: '#460000', // Agrega tu color personalizado "guinda"
+      },
+    },
   },
   plugins: [],
-}
+};

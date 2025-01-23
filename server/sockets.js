@@ -2,44 +2,41 @@ import { connection } from './config/db.mjs'; // Conexión a la base de datos
 import util from 'util'; // Utilizamos util para promisificar las consultas
 
 export function initializeWebSocket(io) {
-  // Promisificamos la consulta para poder utilizar async/await
   const query = util.promisify(connection.query).bind(connection);
 
   io.on('connection', (socket) => {
     console.log('Nuevo cliente conectado vía WebSocket');
     
     socket.on('fileData', async (data) => {
+      const startTime = performance.now(); 
       const { curso, ciclo, idioma, filas } = data;
 
       try {
-        // Procesar el curso
         const idCurso = await processEntity('cursos', 'curso', curso, generateCursoID(curso));
-        // Procesar el ciclo
         const idCiclo = await processEntity('ciclos', 'ciclo', ciclo, await getNewIdCiclo());
-        // Procesar el idioma
         const idIdioma = await processEntity('idiomas', 'idioma', idioma, generateIdiomaID(idioma));
 
-        // Procesar cada fila
         for (const fila of filas) {
-          const { A: boleta, B: nombre, C: apellidop, D: apellidom, E: promedio, F: nivel, G: horario } = fila;
-
-          // Procesar estudiante
-          await processStudent(boleta, nombre, apellidop, apellidom, promedio);
-
-          // Procesar nivel
-          const idNivel = await processEntity('niveles', 'nivel', nivel, generateNivelID(nivel));
-          console.log(`Nivel generado: ${idNivel}`);
-          // Procesar horario
-          const idHorario = await processEntity('horarios', 'horario', horario, await getNewIdHorario());
-          console.log(`Horario: ${horario}`);
-
-          // Insertar inscripción
-          await query(
-            'INSERT INTO inscripciones (id_idioma, id_nivel, id_horario, id_ciclo, id_curso, boleta) VALUES (?, ?, ?, ?, ?, ?)', 
-            [idIdioma, idNivel, idHorario, idCiclo, idCurso, boleta]
-          );
-          console.log(`La inscripción de la boleta "${boleta}" fue insertada con éxito.`);
+          const { A: boleta, B: nombre, C: apellidop, D: apellidom, E: promedio, F: nivel, G: horario, H: procedencia } = fila;
+          if (procedencia === 'INTERNO' && parseFloat(promedio) >= 8.5) {
+            await processStudent(boleta, nombre, apellidop, apellidom, promedio, procedencia);
+            const idNivel = await processEntity('niveles', 'nivel', nivel, generateNivelID(nivel));
+            console.log(`Nivel generado: ${idNivel}`);
+            const idHorario = await processEntity('horarios', 'horario', horario, await getNewIdHorario());
+            console.log(`Horario: ${horario}`);
+            await query(
+              'INSERT INTO inscripciones (id_idioma, id_nivel, id_horario, id_ciclo, id_curso, boleta) VALUES (?, ?, ?, ?, ?, ?)', 
+              [idIdioma, idNivel, idHorario, idCiclo, idCurso, boleta]
+            );
+            console.log(`La inscripción de la boleta "${boleta}" fue insertada con éxito.`);
+          } else {
+            console.log(`El estudiante con boleta "${boleta}" no cumple con los criterios para ser almacenado.`);
+          }
         }
+
+        const endTime = performance.now(); 
+        const totalTime = endTime - startTime; 
+        console.log(`Tiempo total en el servidor: ${totalTime.toFixed(2)} ms`);
 
         socket.emit('dbConnection', 'Datos procesados con éxito');
       } catch (err) {
@@ -50,7 +47,6 @@ export function initializeWebSocket(io) {
     
   });
 
-  // Función para procesar una entidad (curso, ciclo, idioma, etc.)
   async function processEntity(table, column, value, idGenerator) {
     const results = await query(`SELECT * FROM ${table} WHERE ${column} = ?`, [value]);
 
@@ -65,21 +61,19 @@ export function initializeWebSocket(io) {
     }
   }
 
-  // Función para procesar estudiantes
-  async function processStudent(boleta, nombre, apellidop, apellidom, promedio) {
+  async function processStudent(boleta, nombre, apellidop, apellidom, promedio, procedencia) {
     const results = await query('SELECT * FROM estudiantes WHERE boleta = ?', [boleta]);
 
     if (results.length > 0) {
-      await query('UPDATE estudiantes SET promedio = ? WHERE boleta = ?', [promedio, boleta]);
-      console.log(`El promedio de la boleta "${boleta}" fue actualizado.`);
+      await query('UPDATE estudiantes SET promedio = ?, procedencia = ? WHERE boleta = ?', [promedio, procedencia, boleta]);
+      console.log(`El promedio y procedencia de la boleta "${boleta}" fue actualizado.`);
     } else {
-      await query('INSERT INTO estudiantes (boleta, nombre, apellido_paterno, apellido_materno, promedio) VALUES (?, ?, ?, ?, ?)', 
-      [boleta, nombre, apellidop, apellidom, promedio]);
+      await query('INSERT INTO estudiantes (boleta, nombre, apellido_paterno, apellido_materno, promedio, procedencia) VALUES (?, ?, ?, ?, ?, ?)', 
+      [boleta, nombre, apellidop, apellidom, promedio, procedencia]);
       console.log(`El estudiante con boleta "${boleta}" fue insertado con éxito.`);
     }
   }
 
-  // Obtener el nuevo ID de ciclo
   async function getNewIdCiclo() {
     const results = await query('SELECT id_ciclo FROM ciclos ORDER BY id_ciclo DESC LIMIT 1');
     return results.length > 0 ? results[0].id_ciclo + 1 : 1;
@@ -113,6 +107,6 @@ function generateIdiomaID(idioma) {
 function generateNivelID(nivel) {
   const words = nivel.split(' ');
   const firstLetter = words[0].substring(0, 1).toUpperCase();
-  const lastPart = words[words.length - 1]; // El último valor debe ser el número o la letra adicional (ej. "1", "1A")
+  const lastPart = words[words.length - 1]; 
   return `${firstLetter}${lastPart.toUpperCase()}`;
 }

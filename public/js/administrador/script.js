@@ -11,10 +11,35 @@ function handleFileUpload(buttonId, fileInputId) {
   const button = document.getElementById(buttonId);
   const fileInput = document.getElementById(fileInputId);
 
+  // Detectar cuando se selecciona un archivo
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0) {
+      // Cambiar el botón a color verde y texto "SUBIR ARCHIVO"
+      button.classList.remove('bg-guinda', 'hover:bg-gray-700'); // Elimina clases anteriores
+      button.classList.add('bg-resultados', 'hover:bg-green-700', 'text-white'); // Agrega clases para verde
+      button.innerText = 'SUBIR ARCHIVO';
+    } else {
+      // Revertir el botón al estado original si se deselecciona
+      button.classList.remove('bg-resultados', 'hover:bg-green-700'); // Elimina las clases de verde
+      button.classList.add('bg-guinda', 'hover:bg-gray-700'); // Agrega las clases originales
+      button.innerText = 'Selecciona un archivo';
+    }
+  });
+
+
   button.addEventListener('click', () => {
     const file = fileInput.files[0];
     if (!file) {
-      alert('Por favor selecciona un archivo antes de continuar.');
+      Swal.fire({
+        title: 'Archivo no seleccionado',
+        text: 'Por favor selecciona un archivo antes de continuar.',
+        icon: 'warning',
+        confirmButtonText: 'Entendido',
+        customClass: {
+          confirmButton: 'bg-guinda text-white rounded-md px-4 py-2 text-lg hover:bg-gray-700',
+          popup: 'bg-gray-100 border-2 border-guinda rounded-lg text-guinda'
+        }
+      });
       return;
     }
 
@@ -22,6 +47,7 @@ function handleFileUpload(buttonId, fileInputId) {
     reader.readAsArrayBuffer(file);
 
     reader.onload = () => {
+      const startTime = performance.now(); // Tiempo inicial
       const workbook = XLSX.read(reader.result, { type: 'array' });
       const sheet = workbook.Sheets['Sheet1'];
       const curso  = sheet['B1'] ? String(sheet['B1'].v).toUpperCase() : null;
@@ -40,14 +66,15 @@ function handleFileUpload(buttonId, fileInputId) {
         const promedio  = sheet[`E${rowIndex}`] ? String(sheet[`E${rowIndex}`].v).toUpperCase() : null;
         const nivel     = sheet[`F${rowIndex}`] ? normalizeString(sheet[`F${rowIndex}`].v) : null;
         const horario   = sheet[`G${rowIndex}`] ? String(sheet[`G${rowIndex}`].v).toUpperCase() : null;
+        const procedencia   = sheet[`H${rowIndex}`] ? String(sheet[`H${rowIndex}`].v).toUpperCase() : null;
 
-        if (boleta === null && nombre === null && apellidop === null && apellidom === null && promedio === null && nivel === null && horario === null) {
+        if (boleta === null && nombre === null && apellidop === null && apellidom === null && promedio === null && nivel === null && horario === null && procedencia === null) {
           break;
         }
 
         datos.push({
           A: boleta, B: nombre, C: apellidop, D: apellidom, 
-          E: promedio, F: nivel, G: horario
+          E: promedio, F: nivel, G: horario, H: procedencia
         });
 
         rowIndex++;
@@ -56,7 +83,20 @@ function handleFileUpload(buttonId, fileInputId) {
       // Emitimos los datos procesados al servidor a través de WebSocket
       socket.emit('fileData', { curso: curso, ciclo: ciclo, idioma: idioma, filas: datos });
 
-      alert('Archivo procesado con éxito!');
+      const endTime = performance.now(); // Tiempo final
+      const totalTime = endTime - startTime; // Tiempo total
+      console.log(`Tiempo total de procesamiento: ${totalTime.toFixed(2)} ms`);
+
+      Swal.fire({
+        title: '¡Éxito!',
+        text: 'El archivo se procesó con éxito.',
+        icon: 'success',
+        confirmButtonText: 'Entendido',
+        customClass: {
+          confirmButton: 'bg-guinda text-white rounded-md px-4 py-2 text-lg hover:bg-gray-700',
+          popup: 'bg-gray-100 border-2 border-guinda rounded-lg text-guinda',
+        },
+      });
     };
   });
 }
@@ -93,16 +133,45 @@ btnProgramar.addEventListener('click', () => {
   console.log('Fecha y hora:', fechaHora, 'Tipo de curso seleccionado:', tipoCursoSeleccionado);
 
   if (!fechaHora) {
-    alert('Por favor selecciona una fecha y hora antes de programar.');
+    Swal.fire({
+      title: 'Fecha y hora no seleccionadas',
+      text: 'Por favor selecciona una fecha y hora antes de programar.',
+      icon: 'warning',
+      confirmButtonText: 'Entendido',
+      customClass: {
+        confirmButton: 'bg-guinda text-white rounded-md px-4 py-2 text-lg hover:bg-gray-700',
+        popup: 'bg-gray-100 border-2 border-guinda rounded-lg text-guinda',
+      },
+    });
     return;
   }
 
   if (!tipoCursoSeleccionado) {
-    alert('Por favor selecciona un tipo de curso.');
+    Swal.fire({
+      title: 'Tipo de curso no seleccionado',
+      text: 'Por favor selecciona un tipo de curso.',
+      icon: 'warning',
+      confirmButtonText: 'Entendido',
+      customClass: {
+        confirmButton: 'bg-guinda text-white rounded-md px-4 py-2 text-lg hover:bg-gray-700',
+        popup: 'bg-gray-100 border-2 border-guinda rounded-lg text-guinda',
+      },
+    });
     return;
   }
 
   // Emitir un evento con la fecha, hora y tipo de curso al servidor
   socket.emit('programarRuleta', { fechaHora, tipoCurso: tipoCursoSeleccionado });
+
+  Swal.fire({
+    title: '¡Guardado con éxito!',
+    text: `El curso "${tipoCursoSeleccionado}" ha sido programado para ${fechaHora}.`,
+    icon: 'success',
+    confirmButtonText: 'Entendido',
+    customClass: {
+      confirmButton: 'bg-guinda text-white rounded-md px-4 py-2 text-lg hover:bg-gray-700',
+      popup: 'bg-gray-100 border-2 border-guinda rounded-lg text-guinda',
+    },
+  });
 });
 

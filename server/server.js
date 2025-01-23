@@ -25,7 +25,8 @@ initializeWebSocketAlumnos(io);
 // Ruta para obtener estudiantes del curso y ciclo más recientes
 const query = util.promisify(connection.query).bind(connection);
 
-// Inicia el servidor en el puerto 5500
-server.listen(5500, () => {
-  console.log('Servidor escuchando en el puerto 5500');
+// Inicia el servidor en el puerto 5500 y escucha en todas las interfaces
+server.listen(5500, '0.0.0.0', () => {
+  console.log('Servidor escuchando en http://0.0.0.0:5500');
+  console.log('Accede desde otro dispositivo usando la IP de esta máquina, por ejemplo: http://<tu-IP-local>:5500');
 });

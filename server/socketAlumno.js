@@ -1,24 +1,41 @@
-import { connection } from './config/db.mjs'; // Conexión a la base de datos
-import util from 'util'; // Utilizamos util para promisificar las consultas
-import fetch from 'node-fetch'; // Si usas Node.js 18 o inferior, instala node-fetch.
+import { connection } from './config/db.mjs';
+import { disconnect } from './config/db.mjs'; 
+import util from 'util'; 
+import fetch from 'node-fetch'; 
 
-const apiKey = "561a7023-5e35-40df-b6bd-45dfdc149ae8";
+const apiKey = "dda60f9d-20d0-4876-9631-7a78c9876b5f";
 const urlRandomOrg = "https://api.random.org/json-rpc/4/invoke";
 
-const resultadosRuletas = {}; // Almacenará valores de cada ruleta por ID
+let totalConexiones = 0; 
+let solicitud = 0;
+const resultadosRuletas = {}; 
 
 export function initializeWebSocketAlumnos(io) {
   const query = util.promisify(connection.query).bind(connection);
-  // Variable para almacenar el tipo de curso
+
   let tipoCursoGlobal = null;
-  // Manejar las conexiones con los clientes
   io.on('connection', (socket) => {
+    totalConexiones++;
     console.log('Nuevo cliente conectado vía WebSocket');
     
-    // Manejo del evento 'getAlumnos' para obtener los alumnos
+     // Evento de desconexión
+    socket.on('disconnect', () => {
+      totalConexiones--;
+      console.log(`Un usuario se ha desconectado. Total de conexiones: ${totalConexiones}`);
+
+      // Si no hay usuarios conectados, liberar los valores de las ruletas
+      if (totalConexiones === 0) {
+        console.log('No hay usuarios conectados. Liberando los valores de las ruletas.');
+        for (const ruletaId in resultadosRuletas) {
+          delete resultadosRuletas[ruletaId];
+          solicitud = 0;
+        }
+      }
+    });
+
     socket.on('getAlumnos', async (data) => {
       const { tipoCurso } = data;
-      console.log("Tipo de curso recibido del cliente en el servidor:", tipoCurso); // Aquí debería imprimirse 'I' o 'S'
+      console.log("Tipo de curso recibido del cliente en el servidor:", tipoCurso);
     
       if (!tipoCurso) {
         console.error("Error: tipoCurso no recibido del cliente.");
@@ -32,10 +49,6 @@ export function initializeWebSocketAlumnos(io) {
         const ultimoCurso = await obtenerUltimoCurso(query, ultimoCiclo, tipoCurso);
 
         const alumnos = await obtenerAlumnos(query, ultimoCiclo, ultimoCurso);
-
-        // Verificamos que tenemos los alumnos y el tipo de curso antes de enviarlo al cliente
-        console.log("Enviando los datos al cliente con ultimo id_ciclo:", ultimoCiclo);
-        console.log("Enviando los datos al cliente con ultimo curso:", ultimoCurso);
         socket.emit('alumnosData', { alumnos, tipoCurso });
       } catch (err) {
         console.error('Error al obtener los alumnos:', err);
@@ -46,53 +59,47 @@ export function initializeWebSocketAlumnos(io) {
     socket.on('programarRuleta', (data) => {
       const { fechaHora, tipoCurso } = data;
     
-      // Aseguramos que se reciban correctamente los valores
-      console.log('Fecha recibida:', fechaHora); 
-      console.log('Tipo de curso recibido en programarRuleta:', tipoCurso); // Agrega este para verificar si llega bien desde el cliente
-    
       if (!tipoCurso) {
         console.error('Error: tipoCurso no recibido en el servidor.');
         return;
       }
-    
-      // Emitir la fecha, hora y tipo de curso a todos los clientes conectados
+ 
       io.emit('mostrarFechaHora', { fechaHora, tipoCurso });
     });
 
     socket.on('solicitarValoresRuleta', async ({ ruletaId, giro }) => {
-      // Solo genera nuevos valores si no existen para esta ruleta y giro
-      if (!resultadosRuletas[ruletaId]) {
-        const angulos = await obtenerNumerosAleatorios(3, 10, 20); // Tres ángulos para los tres giros
-        const tiempos = await obtenerNumerosAleatorios(3, 5, 10);   // Tres tiempos para los tres giros
-        resultadosRuletas[ruletaId] = { angulos, tiempos };
+      solicitud++;
+      if (solicitud == 1){
+        if (!resultadosRuletas[ruletaId]) {
+          const angulos = await obtenerNumerosAleatorios(3, 20, 360); 
+          const tiempos = await obtenerNumerosAleatorios(3, 5, 10);   
+          resultadosRuletas[ruletaId] = { angulos, tiempos };
+          console.log(`Ruleta ID: ${ruletaId}`);
+          for (let i = 0; i < angulos.length; i++) {
+            console.log(`Ángulo ${i + 1}: ${angulos[i]}, Tiempo ${i + 1}: ${tiempos[i]}`);
+          }
+        }
       }
-    
-      // Asigna el ángulo y tiempo para el giro solicitado desde el almacenamiento
+
       const angulo = resultadosRuletas[ruletaId].angulos[giro - 1];
       const tiempo = resultadosRuletas[ruletaId].tiempos[giro - 1];
     
       if (angulo !== undefined && tiempo !== undefined) {
-        // Emite el mismo valor a todos los clientes para sincronizar las ruletas
         io.emit(`valoresRuleta-${ruletaId}-giro${giro}`, { angulo, tiempo });
       } else {
         console.error("No se recibieron valores válidos para el ángulo o el tiempo.");
       }
     });
     
-    // Escuchar evento para limpiar los valores de la ruleta después del tercer giro
     socket.on('limpiarValoresRuleta', ({ ruletaId }) => {
       if (resultadosRuletas[ruletaId]) {
-        delete resultadosRuletas[ruletaId]; // Limpia los valores de la ruleta específica
-        console.log(`Valores de la ruleta ${ruletaId} eliminados del servidor después del tercer giro.`);
+        delete resultadosRuletas[ruletaId];
       } else {
         console.error(`No se encontraron valores para la ruleta ${ruletaId} al intentar limpiar.`);
       }
     });
 
-    // Modificar el evento de guardar ganadores en el servidor
     socket.on('guardarGanadores', async (ganadores) => {
-      console.log('Ganadores recibidos:', ganadores);
-
       try {
         if (!tipoCursoGlobal) {
           console.error("Error: tipoCurso no definido en el contexto de 'guardarGanadores'.");
@@ -120,7 +127,6 @@ export function initializeWebSocketAlumnos(io) {
                                           [boleta, id_idioma, ultimoCiclo, ultimoCurso]);
 
           if (inscripcion.length > 0) {
-            // Comprobar si ya existe este ganador en la tabla antes de guardarlo
             const existeGanador = await query(`
               SELECT 1 FROM Ganadores 
               WHERE boleta = ? AND id_idioma = ? AND id_nivel = ? AND id_horario = ? AND id_ciclo = ? AND id_curso = ?
@@ -133,8 +139,6 @@ export function initializeWebSocketAlumnos(io) {
               await query(`INSERT INTO Ganadores (id_ganador, id_idioma, id_nivel, id_horario, id_ciclo, id_curso, boleta)
                           VALUES (?, ?, ?, ?, ?, ?, ?)`, 
                           [nuevoIdGanador, inscripcion[0].id_idioma, inscripcion[0].id_nivel, inscripcion[0].id_horario, inscripcion[0].id_ciclo, inscripcion[0].id_curso, boleta]);
-
-              console.log(`Ganador guardado: ${boleta}, Idioma: ${idioma}, Nivel: ${inscripcion[0].id_nivel}`);
             } else {
               console.log(`El ganador con boleta ${boleta} ya está registrado en el ciclo y curso actual.`);
             }
@@ -149,14 +153,10 @@ export function initializeWebSocketAlumnos(io) {
       }
     });
 
-    // Evento para obtener los últimos ganadores
     socket.on('obtenerUltimosGanadores', async () => {
       try {
-        // Obtener el último ciclo y curso para el tipo de curso global
         const ultimoCiclo = await obtenerUltimoCiclo(query);
         const ultimoCurso = await obtenerUltimoCurso(query, ultimoCiclo, tipoCursoGlobal);
-
-        // Consulta para obtener los últimos ganadores
         const ganadores = await query(`
           SELECT g.boleta, e.nombre, e.apellido_paterno, i.idioma, n.nivel, h.horario 
           FROM Ganadores g
@@ -166,8 +166,7 @@ export function initializeWebSocketAlumnos(io) {
           JOIN Horarios h ON h.id_horario = g.id_horario
           WHERE g.id_ciclo = ? AND g.id_curso = ?
         `, [ultimoCiclo, ultimoCurso]);
-
-        // Emitir los datos de los ganadores al cliente
+        
         socket.emit('ultimosGanadores', ganadores);
       } catch (err) {
         console.error('Error al obtener los últimos ganadores:', err);
@@ -179,13 +178,11 @@ export function initializeWebSocketAlumnos(io) {
   });
 }
 
-// Función para obtener el último ciclo
 async function obtenerUltimoCiclo(query) {
   const result = await query('SELECT MAX(id_ciclo) as ultimoCiclo FROM inscripciones');
   return result[0].ultimoCiclo;
 }
 
-// Función para obtener el último curso (Intensivo o Sabatino) del último ciclo
 async function obtenerUltimoCurso(query, ciclo, tipoCurso) {
   const result = await query(
     'SELECT MAX(id_curso) as ultimoCurso FROM inscripciones WHERE id_ciclo = ? AND id_curso LIKE ?',
@@ -194,7 +191,6 @@ async function obtenerUltimoCurso(query, ciclo, tipoCurso) {
   return result[0].ultimoCurso;
 }
 
-// Función para obtener los alumnos con promedio >= 8.5
 async function obtenerAlumnos(query, ciclo, curso) {
   const result = await query(`
     SELECT e.boleta, e.nombre, e.apellido_paterno, e.promedio, n.nivel, h.horario, i.idioma 
@@ -203,13 +199,13 @@ async function obtenerAlumnos(query, ciclo, curso) {
     JOIN niveles n ON n.id_nivel = ins.id_nivel
     JOIN horarios h ON h.id_horario = ins.id_horario
     JOIN idiomas i ON i.id_idioma = ins.id_idioma
-    WHERE ins.id_ciclo = ? AND ins.id_curso = ? AND e.promedio >= 8.5
+    WHERE ins.id_ciclo = ? AND ins.id_curso = ? 
   `, [ciclo, curso]);
 
   return result;
 }
 
-async function obtenerNumerosAleatorios(cantidad, min = 1, max = 100) {
+async function obtenerNumerosAleatorios(cantidad, min = 1, max = 360) {
   const requestData = {
     jsonrpc: "2.0",
     method: "generateIntegers",
